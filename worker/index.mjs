@@ -60,6 +60,14 @@ async function renderJob(job) {
     brandColor: c.brand_color || '#0EA5E9',
     logoUrl: c.logo_url || null,
     musicSrc: null, // TODO: pick a track from public/music per trade
+    phone: c.phone || null,
+    handle: c.handle || null,
+    serviceArea: c.service_area || null,
+    rating: c.rating != null ? Number(c.rating) : null,
+    reviewCount: c.review_count != null ? Number(c.review_count) : null,
+    licensedInsured: !!c.licensed_insured,
+    priceFrom: c.price_from || null,
+    ctaText: c.cta_text || 'Free Quote',
   };
   const composition = await selectComposition({serveUrl, id: 'BeforeAfter', inputProps});
   const outPath = path.join(os.tmpdir(), `aftershot-${job.id}.mp4`);

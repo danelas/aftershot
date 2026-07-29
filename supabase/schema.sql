@@ -12,6 +12,15 @@ create table if not exists customers (
   city          text,
   logo_url      text,
   brand_color   text default '#0EA5E9',
+  -- Conversion fields shown on the reel's sell-card (collected at onboarding).
+  phone         text,
+  handle        text,   -- @theirhandle
+  service_area  text,   -- "Jupiter & Palm Beach County"
+  rating        numeric,
+  review_count  int,
+  licensed_insured boolean not null default false,
+  price_from    text,   -- "$199"
+  cta_text      text not null default 'Free Quote',
   -- The secret slug in the home-screen upload URL /u/<upload_token>.
   upload_token  text not null unique default encode(gen_random_bytes(9), 'hex'),
   email         text not null,
