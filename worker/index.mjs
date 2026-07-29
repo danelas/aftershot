@@ -19,7 +19,7 @@ let bundleUrl = null;
 
 async function getBundle() {
   if (bundleUrl) return bundleUrl;
-  bundleUrl = await bundle({entryPoint: path.resolve('remotion/index.ts')});
+  bundleUrl = await bundle({entryPoint: path.resolve('remotion/index.tsx')});
   return bundleUrl;
 }
 

@@ -31,15 +31,15 @@ export const beforeAfterSchema = z.object({
 export type BeforeAfterProps = z.infer<typeof beforeAfterSchema>;
 
 export const beforeAfterDefaults: BeforeAfterProps = {
-  beforeUrl: staticFile('sample-before.jpg'),
-  afterUrl: staticFile('sample-after.jpg'),
+  beforeUrl: staticFile('real-before.jpg'),
+  afterUrl: staticFile('real-after.jpg'),
   beforeIsVideo: false,
   afterIsVideo: false,
   businessName: 'AquaShine Pressure Washing',
-  hook: "You won't believe this driveway",
+  hook: 'This driveway hadn’t been cleaned in 10 years',
   brandColor: '#0EA5E9',
   logoUrl: null,
-  musicSrc: null,
+  musicSrc: staticFile('music/energy.mp3'),
 };
 
 // Timeline (frames @ 30fps)
@@ -49,12 +49,34 @@ const AFTER_HOLD = 96; //  ~3.2s on the after
 const END_CARD = 78; //    ~2.6s outro
 export const beforeAfterDuration = () => BEFORE_HOLD + WIPE + AFTER_HOLD + END_CARD;
 
-const Media: React.FC<{url: string; isVideo: boolean}> = ({url, isVideo}) =>
-  isVideo ? (
-    <OffthreadVideo src={url} muted style={cover} />
-  ) : (
-    <Img src={url} style={cover} />
+// Ken Burns: a slow, continuous zoom/drift so a still photo feels alive.
+// `phase` offsets the two layers so the before and after keep the same motion
+// direction through the wipe (no jarring reset at the reveal).
+const KenBurns: React.FC<{
+  url: string;
+  isVideo: boolean;
+  phase?: number;
+}> = ({url, isVideo, phase = 0}) => {
+  const frame = useCurrentFrame();
+  const total = beforeAfterDuration();
+  const scale = interpolate(frame, [0, total], [1.04 + phase, 1.12 + phase], {
+    extrapolateRight: 'clamp',
+  });
+  const drift = interpolate(frame, [0, total], [-14, 14], {extrapolateRight: 'clamp'});
+  return (
+    <AbsoluteFill style={{overflow: 'hidden'}}>
+      {isVideo ? (
+        <OffthreadVideo
+          src={url}
+          muted
+          style={{...cover, transform: `scale(${scale}) translateY(${drift}px)`}}
+        />
+      ) : (
+        <Img src={url} style={{...cover, transform: `scale(${scale}) translateY(${drift}px)`}} />
+      )}
+    </AbsoluteFill>
   );
+};
 
 const cover: React.CSSProperties = {
   position: 'absolute',
@@ -102,13 +124,11 @@ export const BeforeAfter: React.FC<BeforeAfterProps> = (props) => {
 
       {/* BEFORE + AFTER stacked; after revealed by an expanding clip-path. */}
       <Sequence durationInFrames={endStart}>
-        <AbsoluteFill>
-          <Media url={props.beforeUrl} isVideo={props.beforeIsVideo} />
-        </AbsoluteFill>
+        <KenBurns url={props.beforeUrl} isVideo={props.beforeIsVideo} />
         <AbsoluteFill
           style={{clipPath: `polygon(0 0, ${wipe}% 0, ${wipe}% 100%, 0 100%)`}}
         >
-          <Media url={props.afterUrl} isVideo={props.afterIsVideo} />
+          <KenBurns url={props.afterUrl} isVideo={props.afterIsVideo} phase={0.03} />
         </AbsoluteFill>
 
         {frame < revealStart + WIPE / 2 ? (
