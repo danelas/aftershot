@@ -1,0 +1,68 @@
+import {NextRequest, NextResponse} from 'next/server';
+import {serviceClient} from '@/lib/supabase';
+
+// POST /api/onboard  (multipart form)
+// Creates a customer from the signup form and returns their upload link.
+// Logo is uploaded server-side (service role) so we don't need storage RLS.
+export async function POST(req: NextRequest) {
+  const form = await req.formData().catch(() => null);
+  if (!form) return NextResponse.json({error: 'bad form'}, {status: 400});
+
+  const str = (k: string) => (form.get(k)?.toString() || '').trim();
+  const businessName = str('businessName');
+  const email = str('email');
+  if (!businessName || !email) {
+    return NextResponse.json({error: 'Business name and email are required'}, {status: 400});
+  }
+
+  const num = (k: string) => {
+    const v = str(k);
+    return v ? Number(v) : null;
+  };
+
+  const sb = serviceClient();
+  const {data: customer, error} = await sb
+    .from('customers')
+    .insert({
+      business_name: businessName,
+      email,
+      trade: str('trade') || 'pressure_washing',
+      phone: str('phone') || null,
+      service_area: str('serviceArea') || null,
+      handle: str('handle') || null,
+      price_from: str('priceFrom') || null,
+      brand_color: str('brandColor') || '#0EA5E9',
+      cta_text: str('ctaText') || 'Free Quote',
+      licensed_insured: str('licensedInsured') === 'true',
+      google_place_id: str('placeId') || null,
+      rating: num('rating'),
+      review_count: num('reviewCount'),
+    })
+    .select('id, upload_token')
+    .single();
+  if (error) return NextResponse.json({error: error.message}, {status: 500});
+
+  // Optional logo → public 'reels' bucket.
+  const logo = form.get('logo');
+  if (logo && typeof logo !== 'string' && logo.size > 0) {
+    const ext = (logo.name.split('.').pop() || 'png').toLowerCase();
+    const key = `logos/${customer.upload_token}.${ext}`;
+    const buf = Buffer.from(await logo.arrayBuffer());
+    const {error: upErr} = await sb.storage
+      .from('reels')
+      .upload(key, buf, {contentType: logo.type || 'image/png', upsert: true});
+    if (!upErr) {
+      const url = sb.storage.from('reels').getPublicUrl(key).data.publicUrl;
+      await sb.from('customers').update({logo_url: url}).eq('id', customer.id);
+    }
+  }
+
+  await sb.from('reminders').upsert({customer_id: customer.id});
+
+  const base = process.env.PUBLIC_BASE_URL || new URL(req.url).origin;
+  return NextResponse.json({
+    ok: true,
+    uploadToken: customer.upload_token,
+    uploadUrl: `${base}/u/${customer.upload_token}`,
+  });
+}

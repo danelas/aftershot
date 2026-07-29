@@ -10,7 +10,7 @@ export default function Home() {
         Instagram, TikTok, and YouTube. You never open an editor.
       </p>
       <a
-        href="/pricing"
+        href="/start"
         style={{display: 'inline-block', marginTop: 32, background: '#0EA5E9', color: '#fff', padding: '16px 28px', borderRadius: 14, fontWeight: 700, textDecoration: 'none', fontSize: 18}}
       >
         Start free
