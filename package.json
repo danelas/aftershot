@@ -10,7 +10,8 @@
     "render:sample": "remotion render remotion/index.tsx BeforeAfter out/sample.mp4",
     "worker": "node worker/index.mjs",
     "setup:storage": "node scripts/setup-storage.mjs",
-    "seed": "node scripts/seed-test.mjs"
+    "seed": "node scripts/seed-test.mjs",
+    "refresh:ratings": "node scripts/refresh-ratings.mjs"
   },
   "dependencies": {
     "@remotion/bundler": "4.0.395",

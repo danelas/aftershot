@@ -21,6 +21,7 @@ create table if not exists customers (
   licensed_insured boolean not null default false,
   price_from    text,   -- "$199"
   cta_text      text not null default 'Free Quote',
+  google_place_id text,  -- Places API id; rating/review_count refreshed weekly from it
   -- The secret slug in the home-screen upload URL /u/<upload_token>.
   upload_token  text not null unique default encode(gen_random_bytes(9), 'hex'),
   email         text not null,
