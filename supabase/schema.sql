@@ -23,7 +23,9 @@ create table if not exists customers (
   -- Web-push subscription JSON (from the PWA service worker), if granted.
   push_sub      jsonb,
   -- upload-post.com profile handle for this customer's connected accounts.
-  upload_post_profile text
+  upload_post_profile text,
+  -- Which platforms to publish to (defaults to the ones that matter for trades).
+  platforms text[] not null default '{instagram,tiktok,youtube}'
 );
 
 -- A single before/after submission.

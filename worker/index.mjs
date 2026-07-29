@@ -2,12 +2,18 @@
 // reel headless via Remotion, uploads to Storage, then hands off to the poster.
 // Runs as a Render cron/background worker (mirrors pro-email-extractor). Retries
 // with backoff — learned from PeekScout's upload-post poll-timeout failures.
+import 'dotenv/config';
 import {createClient} from '@supabase/supabase-js';
 import {bundle} from '@remotion/bundler';
 import {renderMedia, selectComposition} from '@remotion/renderer';
 import {readFile} from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
+import {postReel, buildCaption} from './poster.mjs';
+
+// Safety gate: posting publishes to real accounts. Off by default so live
+// render tests never post. Flip AUTOPOST=1 only when you mean to publish.
+const AUTOPOST = process.env.AUTOPOST === '1';
 
 const sb = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -72,16 +78,56 @@ async function renderJob(job) {
   await sb.storage.from('reels').upload(key, mp4, {contentType: 'video/mp4', upsert: true});
   const reelUrl = await publicUrl('reels', key);
   await sb.from('jobs').update({status: 'rendered', reel_url: reelUrl}).eq('id', job.id);
-  return reelUrl;
+  return {reelUrl, localPath: outPath};
+}
+
+// Publish the rendered reel to the customer's connected accounts.
+async function postJob(job, localPath) {
+  const c = job.customers;
+  const platforms = c.platforms?.length ? c.platforms : ['instagram', 'tiktok', 'youtube'];
+  const caption = buildCaption({
+    businessName: c.business_name,
+    city: c.city,
+    trade: c.trade,
+    hook: job.hook,
+  });
+  // One posts row per platform for tracking.
+  await sb.from('posts').insert(platforms.map((p) => ({job_id: job.id, platform: p, status: 'pending'})));
+  await sb.from('jobs').update({status: 'posting'}).eq('id', job.id);
+
+  const body = await postReel({
+    mediaPath: localPath,
+    title: `${c.business_name} — before & after`,
+    caption,
+    platforms,
+    profile: c.upload_post_profile,
+  });
+
+  // Record per-platform outcome (best-effort; upload-post shape varies).
+  for (const p of platforms) {
+    const r = body && typeof body === 'object' ? body[p] : null;
+    const ok = !(r && (r.error || /fail|error|reject/i.test(String(r.status ?? ''))));
+    await sb
+      .from('posts')
+      .update({status: ok ? 'posted' : 'failed', error: ok ? null : JSON.stringify(r)})
+      .eq('job_id', job.id)
+      .eq('platform', p);
+  }
+  await sb.from('jobs').update({status: 'done'}).eq('id', job.id);
 }
 
 async function tick() {
   const job = await claimNextJob();
   if (!job) return false;
   try {
-    await renderJob(job);
-    // TODO(week2): enqueue posting — insert `posts` rows + call poster (upload-post).
+    const {localPath} = await renderJob(job);
     console.log(`[render] job ${job.id} → rendered`);
+    if (AUTOPOST) {
+      await postJob(job, localPath);
+      console.log(`[post] job ${job.id} → published`);
+    } else {
+      console.log(`[post] job ${job.id} SKIPPED (AUTOPOST off) — reel ready, not published`);
+    }
   } catch (err) {
     const failed = job.attempts + 1 >= MAX_ATTEMPTS;
     await sb
