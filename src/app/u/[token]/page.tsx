@@ -3,7 +3,7 @@
 // The whole friction-killer: one screen, two photos, done. Owners add this to
 // their home screen (PWA) so it's a one-tap icon. No editor, no account, no app.
 import {useState} from 'react';
-import {supabase} from '@/lib/supabase';
+import {anonClient} from '@/lib/supabase';
 import {use} from 'react';
 
 export default function UploadPage({params}: {params: Promise<{token: string}>}) {
@@ -22,7 +22,7 @@ export default function UploadPage({params}: {params: Promise<{token: string}>})
       const put = async (f: File, tag: string) => {
         const ext = f.name.split('.').pop() || 'jpg';
         const path = `${token}/${stamp}-${tag}.${ext}`;
-        const {error} = await supabase.storage.from('intake').upload(path, f, {upsert: false});
+        const {error} = await anonClient().storage.from('intake').upload(path, f, {upsert: false});
         if (error) throw error;
         return {path, isVideo: f.type.startsWith('video/')};
       };
