@@ -15,9 +15,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({error: 'Business name and email are required'}, {status: 400});
   }
 
+  // Rating/reviews can now be hand-typed (Places fallback), so reject junk
+  // rather than sending NaN to Postgres and 500ing the whole signup.
   const num = (k: string) => {
-    const v = str(k);
-    return v ? Number(v) : null;
+    const n = Number(str(k));
+    return Number.isFinite(n) && n > 0 ? n : null;
   };
 
   const sb = serviceClient();

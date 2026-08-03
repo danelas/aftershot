@@ -4,6 +4,8 @@
 
 const KEY = () => process.env.GOOGLE_MAPS_API_KEY?.trim() || '';
 
+export const placesConfigured = () => Boolean(KEY());
+
 export type PlaceMatch = {
   id: string;
   name: string;
@@ -13,8 +15,11 @@ export type PlaceMatch = {
 };
 
 // Onboarding picker: business types their name, we show matches to choose from.
+// Throws when the key is missing so callers report "not set up" instead of
+// showing an empty picker that looks like "your business isn't on Google".
 export async function searchPlaces(query: string): Promise<PlaceMatch[]> {
-  if (!KEY() || !query.trim()) return [];
+  if (!KEY()) throw new Error('GOOGLE_MAPS_API_KEY is not set');
+  if (!query.trim()) return [];
   const res = await fetch('https://places.googleapis.com/v1/places:searchText', {
     method: 'POST',
     headers: {

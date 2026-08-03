@@ -32,6 +32,7 @@ function SubscribeInner() {
   const [msg, setMsg] = useState('');
   const stripeRef = useRef<Stripe | null>(null);
   const elementsRef = useRef<StripeElements | null>(null);
+  const mountedRef = useRef(false);
   const sel = PLANS.find((p) => p.id === plan)!;
 
   async function begin() {
@@ -43,38 +44,67 @@ function SubscribeInner() {
         headers: {'content-type': 'application/json'},
         body: JSON.stringify({email, plan}),
       });
-      const d = await r.json();
+      const d = await r.json().catch(() => ({}));
       if (d.alreadySubscribed) { setMsg('You already have an active plan — you’re all set.'); return; }
-      if (!r.ok) throw new Error(d.error || 'failed');
-      const stripe = await loadStripe(d.publishableKey);
-      if (!stripe) throw new Error('Stripe failed to load');
+      if (!r.ok) throw new Error(d.error || `Checkout failed (${r.status}). Please try again.`);
+      if (!d.publishableKey) throw new Error('Card payments are not configured yet. Email hello@theaftershot.com and we’ll set you up by hand.');
+
+      // Stripe.js is a third-party script: ad/privacy blockers and locked-down
+      // networks are the usual reason it never resolves. Say so instead of
+      // leaving a dead button — this failure was previously invisible.
+      const stripe = await loadStripe(d.publishableKey).catch(() => null);
+      if (!stripe) {
+        throw new Error(
+          'Couldn’t load the secure card form. An ad or privacy blocker is usually the cause — pause it for this site (or try another browser) and tap Continue again.',
+        );
+      }
       stripeRef.current = stripe;
       elementsRef.current = stripe.elements({
         clientSecret: d.clientSecret,
         appearance: {theme: 'night', variables: {colorPrimary: '#38bdf8', borderRadius: '12px'}},
       });
+      mountedRef.current = false;
       setStep('card');
     } catch (e: any) {
-      setMsg(e?.message || 'Something went wrong.');
+      console.error('checkout begin failed', e);
+      setMsg(e?.message || 'Something went wrong. Please try again.');
     } finally { setBusy(false); }
   }
 
-  // Mount once the card step's container is actually in the DOM.
+  // Mount once the card step's container is actually in the DOM. Guarded:
+  // creating a second 'payment' element on the same Elements instance throws.
   useEffect(() => {
-    if (step === 'card' && elementsRef.current) {
+    if (step !== 'card' || !elementsRef.current || mountedRef.current) return;
+    try {
+      mountedRef.current = true;
       elementsRef.current.create('payment').mount('#payment-el');
+    } catch (e: any) {
+      console.error('payment element mount failed', e);
+      mountedRef.current = false;
+      setMsg(e?.message || 'The card form could not be displayed. Please reload and try again.');
     }
   }, [step]);
 
   async function confirm() {
     const stripe = stripeRef.current, elements = elementsRef.current;
-    if (!stripe || !elements) return;
+    if (!stripe || !elements) {
+      setMsg('The card form isn’t ready yet. Please reload the page and try again.');
+      return;
+    }
     setBusy(true); setMsg('');
-    const {error} = await stripe.confirmSetup({
-      elements,
-      confirmParams: {return_url: `${window.location.origin}/subscribe/done`},
-    });
-    if (error) { setMsg(error.message || 'Card was not accepted.'); setBusy(false); }
+    try {
+      const {error} = await stripe.confirmSetup({
+        elements,
+        confirmParams: {return_url: `${window.location.origin}/subscribe/done`},
+      });
+      // Only reached when Stripe did not redirect — i.e. something went wrong.
+      if (error) setMsg(error.message || 'Card was not accepted.');
+    } catch (e: any) {
+      console.error('confirmSetup threw', e);
+      setMsg(e?.message || 'Something went wrong starting your trial. Your card was not charged.');
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (

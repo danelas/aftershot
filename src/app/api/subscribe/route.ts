@@ -60,7 +60,16 @@ export async function POST(req: NextRequest) {
       subscriptionId: sub.id,
     });
   } catch (e: any) {
-    console.error('subscribe error', e?.message);
+    // Log enough to diagnose from `vercel logs` — a bare message left the last
+    // failed signup with no trace of why.
+    console.error('subscribe error', {
+      email,
+      plan: planId,
+      type: e?.type,
+      code: e?.code,
+      status: e?.statusCode,
+      message: e?.message,
+    });
     return NextResponse.json({error: 'Could not start checkout. Try again.'}, {status: 500});
   }
 }

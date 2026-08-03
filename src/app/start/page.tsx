@@ -37,6 +37,10 @@ export default function Start() {
   const [logo, setLogo] = useState<File | null>(null);
   const [matches, setMatches] = useState<Match[]>([]);
   const [searching, setSearching] = useState(false);
+  // '' = not searched yet. Anything else is shown under the picker so a failed
+  // or unconfigured lookup never looks like "no results".
+  const [lookupNote, setLookupNote] = useState('');
+  const [manualRating, setManualRating] = useState(false);
   const [state, setState] = useState<'idle' | 'saving' | 'done' | 'error'>('idle');
   const [result, setResult] = useState<{uploadUrl: string} | null>(null);
   const [msg, setMsg] = useState('');
@@ -46,11 +50,27 @@ export default function Start() {
   async function findBusiness() {
     if (!f.businessName.trim()) return;
     setSearching(true);
+    setLookupNote('');
     try {
       const r = await fetch(`/api/places/search?q=${encodeURIComponent(f.businessName)}`);
       const d = await r.json();
-      setMatches(d.matches || []);
-    } catch { setMatches([]); }
+      const found: Match[] = d.matches || [];
+      setMatches(found);
+      if (d.configured === false) {
+        setLookupNote('Google lookup isn’t switched on yet — add your rating below and we’ll sync it later.');
+        setManualRating(true);
+      } else if (d.error) {
+        setLookupNote(d.error);
+        setManualRating(true);
+      } else if (found.length === 0) {
+        setLookupNote('No Google listing found for that name. Try the name exactly as it appears on Google Maps, or enter your rating below.');
+        setManualRating(true);
+      }
+    } catch {
+      setMatches([]);
+      setLookupNote('Couldn’t reach Google just now. Enter your rating below and carry on.');
+      setManualRating(true);
+    }
     setSearching(false);
   }
 
@@ -63,6 +83,8 @@ export default function Start() {
       reviewCount: m.reviewCount ?? '',
     }));
     setMatches([]);
+    setLookupNote('');
+    setManualRating(false);
   }
 
   async function submit() {
@@ -135,6 +157,23 @@ export default function Start() {
             </div>
           )}
           {f.placeId && <p className="onb-linked">✓ Linked to Google — live rating {String(f.rating)} ({String(f.reviewCount)} reviews)</p>}
+          {lookupNote && !f.placeId && <p className="onb-note">{lookupNote}</p>}
+          {manualRating && !f.placeId && (
+            <div className="onb-row">
+              <input
+                className="onb-input" style={{flex: 1}} inputMode="decimal"
+                placeholder="Rating (e.g. 4.9)"
+                value={String(f.rating)}
+                onChange={(e) => set('rating', e.target.value)}
+              />
+              <input
+                className="onb-input" style={{flex: 1}} inputMode="numeric"
+                placeholder="# of reviews (e.g. 127)"
+                value={String(f.reviewCount)}
+                onChange={(e) => set('reviewCount', e.target.value)}
+              />
+            </div>
+          )}
           <input className="onb-input" type="email" placeholder="Email" value={f.email} onChange={(e) => set('email', e.target.value)} />
           <input className="onb-input" placeholder="Phone (shown as the Call/Text CTA)" value={f.phone} onChange={(e) => set('phone', e.target.value)} />
           <input className="onb-input" placeholder="Service area (e.g. Jupiter & Palm Beach County)" value={f.serviceArea} onChange={(e) => set('serviceArea', e.target.value)} />

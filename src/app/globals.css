@@ -408,7 +408,11 @@ a { color: inherit; }
 .checkout-input::placeholder { color: var(--faint); }
 .checkout-input:focus { outline: 2px solid rgba(14, 165, 233, 0.5); border-color: transparent; }
 .checkout-btn { width: 100%; margin-top: 14px; }
-.checkout-msg { color: #f87171; font-size: 14px; margin: 12px 0 0; }
+.checkout-msg {
+  color: #fca5a5; font-size: 14px; line-height: 1.5; margin: 14px 0 0;
+  padding: 11px 13px; border-radius: 10px;
+  background: rgba(248, 113, 113, 0.09); border: 1px solid rgba(248, 113, 113, 0.28);
+}
 .secure { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 12.5px; color: var(--faint); text-align: center; margin: 18px 0 0; }
 
 /* ---------- onboarding (/start) ---------- */
@@ -457,6 +461,7 @@ a { color: inherit; }
 .onb-match .addr { color: var(--faint); }
 .onb-match .stars { color: var(--brand-bright); }
 .onb-linked { font-size: 13px; color: #34d399; margin: 0 0 12px; font-weight: 600; }
+.onb-note { font-size: 13px; color: var(--muted); line-height: 1.5; margin: 0 0 12px; }
 .trade-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
 .trade-chip {
   display: flex; align-items: center; gap: 8px;
