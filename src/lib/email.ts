@@ -91,15 +91,16 @@ export function trialStartedEmail(planName: string, amountLabel: string, uploadU
     subject: `Your AfterShot ${planName} trial has started`,
     text:
       `Your 7-day free trial is live on ${planName}.\n\n` +
-      `You won't be charged until it ends, then it's ${amountLabel}. Cancel anytime before then and you pay nothing.\n\n` +
+      `We don't have a card on file, so there's nothing to cancel and no way for this to bill you. If you want to keep going after the 7 days, add a card and it's ${amountLabel}. If you don't, it just stops.\n\n` +
       (uploadUrl ? `Your upload link:\n${uploadUrl}\n\n` : '') +
       `— AfterShot`,
     html: shell(
       'Your free trial is live.',
       `<p style="margin:0 0 16px;color:#9fb0c7;line-height:1.65;font-size:15px">
-         You're on <b style="color:#e6edf7">${escapeHtml(planName)}</b>. Nothing is
-         charged for 7 days — after that it's ${escapeHtml(amountLabel)}, and you can
-         cancel anytime before then and pay nothing.
+         You're on <b style="color:#e6edf7">${escapeHtml(planName)}</b>. We don't have
+         a card on file — so there's nothing to cancel and no way for this to bill
+         you. Want to keep going after the 7 days? Add a card then and it's
+         ${escapeHtml(amountLabel)}. Otherwise it just stops.
        </p>
        ${uploadUrl
         ? `<p style="margin:0;padding:13px 15px;background:#070b12;border:1px solid #1e2a3a;border-radius:10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13.5px;color:#38bdf8;word-break:break-all">${escapeHtml(uploadUrl)}</p>`

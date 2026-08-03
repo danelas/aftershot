@@ -1,9 +1,11 @@
 import {NextRequest, NextResponse} from 'next/server';
-import Stripe from 'stripe';
 import {stripe, planPriceId, isPlanId, TRIAL_DAYS} from '@/lib/stripe';
 
-// Creates a trialing subscription and returns the SetupIntent client secret so
-// the card can be collected on-page. No charge until the 7-day trial ends.
+// Starts a 7-day trial with NO card. The subscription is created straight into
+// `trialing` with no payment method attached, and
+// trial_settings.missing_payment_method = 'cancel' means Stripe cancels it at
+// trial end instead of issuing an invoice — so a trial can never turn into a
+// charge on its own. Collecting a card is a separate, later, opt-in step.
 export async function POST(req: NextRequest) {
   const {email, businessName, plan} = await req.json().catch(() => ({}));
   const planId = isPlanId(plan) ? plan : 'pro';
@@ -11,7 +13,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({error: 'A valid email is required.'}, {status: 400});
   }
   if (!process.env.STRIPE_SECRET_KEY) {
-    return NextResponse.json({error: 'Payments are not configured yet.'}, {status: 503});
+    return NextResponse.json({error: 'Trials are not configured yet.'}, {status: 503});
   }
   try {
     const s = stripe();
@@ -23,42 +25,35 @@ export async function POST(req: NextRequest) {
     // One live subscription per customer — reuse instead of double-billing.
     const existing = await s.subscriptions.list({customer: customer.id, status: 'all', limit: 10});
     const active = existing.data.find((x) => ['trialing', 'active', 'past_due'].includes(x.status));
-    let sub = active ?? null;
-    if (sub && !sub.pending_setup_intent) {
-      return NextResponse.json({alreadySubscribed: true});
-    }
-    // Returning visitor who picked a different tier before ever adding a card:
-    // move the unconfirmed subscription to the newly chosen price.
-    if (sub) {
+
+    if (active) {
+      // Already on a trial or a paid plan. Let them switch tier while still
+      // trialing, but never create a second subscription.
       const wantPrice = await planPriceId(planId);
-      const item = sub.items.data[0];
-      if (item && item.price.id !== wantPrice) {
-        sub = await s.subscriptions.update(sub.id, {
+      const item = active.items.data[0];
+      if (active.status === 'trialing' && item && item.price.id !== wantPrice) {
+        const moved = await s.subscriptions.update(active.id, {
           items: [{id: item.id, price: wantPrice}],
           proration_behavior: 'none',
-          expand: ['pending_setup_intent'],
         });
+        return NextResponse.json({ok: true, trialEnd: moved.trial_end, switched: true});
       }
+      return NextResponse.json({
+        ok: true,
+        alreadySubscribed: active.status !== 'trialing',
+        trialEnd: active.trial_end,
+      });
     }
-    sub ??= await s.subscriptions.create({
+
+    const sub = await s.subscriptions.create({
       customer: customer.id,
       items: [{price: await planPriceId(planId)}],
       trial_period_days: TRIAL_DAYS,
-      payment_behavior: 'default_incomplete',
-      payment_settings: {save_default_payment_method: 'on_subscription'},
+      // The safety net: no card at trial end => cancel, never invoice.
       trial_settings: {end_behavior: {missing_payment_method: 'cancel'}},
-      expand: ['pending_setup_intent'],
     });
-    const si =
-      typeof sub.pending_setup_intent === 'string'
-        ? await s.setupIntents.retrieve(sub.pending_setup_intent)
-        : (sub.pending_setup_intent as Stripe.SetupIntent | null);
-    if (!si?.client_secret) throw new Error('No setup intent on subscription');
-    return NextResponse.json({
-      clientSecret: si.client_secret,
-      publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || '',
-      subscriptionId: sub.id,
-    });
+
+    return NextResponse.json({ok: true, trialEnd: sub.trial_end});
   } catch (e: any) {
     // Log enough to diagnose from `vercel logs` — a bare message left the last
     // failed signup with no trace of why.
@@ -70,6 +65,6 @@ export async function POST(req: NextRequest) {
       status: e?.statusCode,
       message: e?.message,
     });
-    return NextResponse.json({error: 'Could not start checkout. Try again.'}, {status: 500});
+    return NextResponse.json({error: 'Could not start your trial. Try again.'}, {status: 500});
   }
 }

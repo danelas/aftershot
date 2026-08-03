@@ -71,7 +71,7 @@ export default function Home() {
               <a href="/start" className="btn">Start free trial <ArrowRight size={18} /></a>
               <a href="#how" className="btn btn-ghost">See how it works</a>
             </div>
-            <p className="fine">7 days free · plans from $19/mo · cancel anytime</p>
+            <p className="fine">7 days free · no card required · plans from $19/mo</p>
             <div className="posts-to">
               Posts to
               <span className="pill-row">
@@ -235,7 +235,7 @@ export default function Home() {
                   <a href={`/start?plan=${t.id}`} className={`btn${t.popular ? '' : ' btn-ghost'}`}>
                     Start 7-day free trial
                   </a>
-                  <p className="fine">$0 today · cancel anytime</p>
+                  <p className="fine">No card required · $0 today</p>
                 </div>
               </Reveal>
             ))}
@@ -308,9 +308,10 @@ export default function Home() {
             <details>
               <summary>What happens after my free trial?</summary>
               <p>
-                Nothing is charged for 7 days. Cancel anytime before the trial ends
-                and you pay $0 — otherwise your plan starts automatically and you
-                keep posting. You can switch plans or cancel whenever.
+                The trial needs no card at all, so there is nothing to cancel and
+                no way for it to bill you by accident. Near the end of the 7 days
+                we&apos;ll email you — add a card then if you want to keep posting,
+                and if you don&apos;t, it simply stops.
               </p>
             </details>
           </div>

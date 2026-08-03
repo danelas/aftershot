@@ -125,7 +125,7 @@ export default function Start() {
             Start your 7-day free trial →
           </a>
           <p className="onb-fine">
-            $0 today. Plans from $19/mo, cancel anytime.
+            No card required. Plans from $19/mo only if you continue.
             <br />
             {result.emailed
               ? `We've emailed this link to ${f.email} too.`
@@ -230,7 +230,7 @@ export default function Start() {
         <button className="btn checkout-btn" disabled={state === 'saving'} onClick={submit}>
           {state === 'saving' ? 'Setting up…' : 'Create my account'}
         </button>
-        <p className="onb-fine" style={{textAlign: 'center'}}>Free to set up · 7-day free trial when you subscribe</p>
+        <p className="onb-fine" style={{textAlign: 'center'}}>Free to set up · 7-day free trial · no card required</p>
       </div>
     </main>
   );

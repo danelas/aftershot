@@ -30,16 +30,18 @@ export async function POST(req: NextRequest) {
       // next subscription event; don't let a missing DB cause retry storms.
       console.error('webhook sync skipped:', e?.message);
     }
-    // A subscription is 'trialing' from the moment it's created, before any
-    // card exists — so the confirmation waits for a payment method to land.
-    if (sub.default_payment_method) {
+    // Trials are card-free now, so 'trialing' at creation IS the live trial —
+    // there is no later card event to wait for. (This used to gate on
+    // default_payment_method; under a no-card trial that never arrives, so the
+    // confirmation email would never have sent.)
+    if (sub.status === 'trialing') {
       await announceTrial(typeof sub.customer === 'string' ? sub.customer : sub.customer.id)
         .catch((e) => console.error('trial email skipped:', e?.message));
     }
   }
 
-  // Fires exactly once when the card is saved, whichever events this endpoint
-  // is subscribed to. Deduped against the Stripe customer's metadata.
+  // Still handled: someone adding a card later to continue past the trial.
+  // Deduped against the Stripe customer's metadata, so it won't double-send.
   if (event.type === 'setup_intent.succeeded') {
     const si = event.data.object as Stripe.SetupIntent;
     const cid = typeof si.customer === 'string' ? si.customer : si.customer?.id;
