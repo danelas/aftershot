@@ -48,7 +48,11 @@ const MIME = {'.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', 
 // path to your own file.
 const musicArg = arg('music');
 let musicPath = null;
-if (musicArg) {
+// http(s) values pass through untouched. A bundle-relative path can NOT be
+// hand-written: Remotion serves public/ under a hashed prefix, so only
+// staticFile() inside the composition can address it.
+const musicPassthrough = musicArg && /^https?:\/\//.test(musicArg) ? musicArg : null;
+if (musicArg && !musicPassthrough) {
   const builtin = path.resolve('public/music', `${musicArg}.mp3`);
   musicPath = fs.existsSync(builtin) ? builtin : path.resolve(musicArg);
   if (!fs.existsSync(musicPath)) {
@@ -81,7 +85,7 @@ const inputProps = {
   hook: arg('hook', "You won't believe the difference"),
   brandColor: arg('color', '#0EA5E9'),
   logoUrl: arg('logo', null),
-  musicSrc: musicPath ? `${origin}/music` : null,
+  musicSrc: musicPassthrough ?? (musicPath ? `${origin}/music` : null),
   phone: arg('phone', null),
   handle: arg('handle', null),
   serviceArea: arg('area', null),
@@ -95,6 +99,8 @@ const inputProps = {
 console.log('Bundling Remotion…');
 const serveUrl = await bundle({
   entryPoint: path.resolve('remotion/index.tsx'),
+  // Explicit rather than relying on Remotion walking up to find the root.
+  publicDir: path.resolve('public'),
   onProgress: (p) => process.stdout.write(`\r  bundle ${p}%   `),
 });
 console.log('\nSelecting composition…');

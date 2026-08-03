@@ -17,6 +17,11 @@ const {fontFamily} = loadFont();
 const SANS = 'Arial, Helvetica, sans-serif';
 
 // 30fps @ 1080x1920. BEFORE hold → wipe reveal (whoosh) → AFTER hold → sell card.
+// uplift (14.7s), not energy (8.75s): energy is SHORTER than the 9.02s reel, so
+// it went silent just before the end card finished. Declared above the defaults
+// that reference it.
+const HOUSE_TRACK = 'music/uplift.mp3';
+
 export const beforeAfterSchema = z.object({
   beforeUrl: z.string(),
   afterUrl: z.string(),
@@ -48,7 +53,7 @@ export const beforeAfterDefaults: BeforeAfterProps = {
   hook: 'This driveway hadn’t been cleaned in 10 years',
   brandColor: '#0EA5E9',
   logoUrl: null,
-  musicSrc: staticFile('music/energy.mp3'),
+  musicSrc: staticFile(HOUSE_TRACK),
   phone: '(561) 555-0123',
   handle: '@aquashinefl',
   serviceArea: 'Jupiter & Palm Beach County',
@@ -151,6 +156,11 @@ export const BeforeAfter: React.FC<BeforeAfterProps> = (props) => {
   const hookIn = spring({frame, fps, config: {damping: 200}});
   const endStart = BEFORE_HOLD + WIPE + AFTER_HOLD;
   // Sell-card text colours, derived from the brand so bright brands stay legible.
+  // Remotion serves public/ under a hashed prefix, so only staticFile() called
+  // from inside the bundle can name a track — the worker can't. It passes
+  // musicSrc: null, which is why every real customer reel rendered silent.
+  // Treat null as "use the house track"; pass '' for genuine silence.
+  const music = props.musicSrc === '' ? null : (props.musicSrc ?? staticFile(HOUSE_TRACK));
   const endInk = readableOn(props.brandColor);
   const ctaInk = contrast(props.brandColor, '#ffffff') >= DISPLAY_CONTRAST ? props.brandColor : INK;
 
@@ -158,9 +168,9 @@ export const BeforeAfter: React.FC<BeforeAfterProps> = (props) => {
     <AbsoluteFill style={{backgroundColor: '#000'}}>
       {/* Most library tracks are ~50s, so without a fade the reel ends on a hard
           cut mid-bar. Short fade in as well so it doesn't pop on frame 0. */}
-      {props.musicSrc ? (
+      {music ? (
         <Audio
-          src={props.musicSrc}
+          src={music}
           volume={(f) =>
             interpolate(
               f,
