@@ -119,6 +119,8 @@ function AccountInner() {
         )}
       </div>
 
+      <SocialCard token={token!} />
+
       <div className="acct-card">
         <p className="acct-label">YOUR REELS</p>
         <div className="acct-row"><span>Jobs posted</span><b>{acct.jobCount}</b></div>
@@ -135,6 +137,101 @@ function AccountInner() {
         Forget this device
       </button>
     </Shell>
+  );
+}
+
+const PLATFORM_LABEL: Record<string, string> = {
+  instagram: 'Instagram',
+  tiktok: 'TikTok',
+  youtube: 'YouTube',
+};
+
+type Social = {
+  configured: boolean;
+  unavailable?: boolean;
+  platforms: string[];
+  accounts: {platform: string; handle: string | null; displayName: string | null; reauthRequired: boolean}[];
+};
+
+// Where a customer links their own IG/TikTok/YouTube. We never see their
+// platform credentials — upload-post hosts the OAuth and we just send them to it.
+function SocialCard({token}: {token: string}) {
+  const [social, setSocial] = useState<Social | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+
+  useEffect(() => {
+    if (!token) return;
+    fetch(`/api/social/status?t=${encodeURIComponent(token)}`)
+      .then((r) => r.json())
+      .then(setSocial)
+      .catch(() => setSocial({configured: true, unavailable: true, platforms: [], accounts: []}));
+  }, [token]);
+
+  async function connect() {
+    setBusy(true); setErr('');
+    try {
+      const r = await fetch('/api/social/connect', {
+        method: 'POST',
+        headers: {'content-type': 'application/json'},
+        body: JSON.stringify({t: token}),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok || !d.url) throw new Error(d.error || 'Could not start the connection.');
+      window.location.href = d.url; // upload-post's hosted linking page
+    } catch (e: any) {
+      setErr(e?.message || 'Something went wrong.');
+      setBusy(false);
+    }
+  }
+
+  const linked = new Map((social?.accounts ?? []).map((a) => [a.platform, a]));
+  const platforms = social?.platforms?.length ? social.platforms : ['instagram', 'tiktok', 'youtube'];
+  const anyLinked = linked.size > 0;
+
+  return (
+    <div className="acct-card">
+      <p className="acct-label">WHERE WE POST</p>
+      {social === null ? (
+        <p className="acct-muted" style={{margin: 0}}>Checking your connected accounts…</p>
+      ) : social.configured === false ? (
+        <p className="acct-muted" style={{margin: 0}}>
+          Auto-posting isn&apos;t switched on for your account yet. Email{' '}
+          <a href="mailto:hello@theaftershot.com" style={{color: 'var(--brand-bright)'}}>hello@theaftershot.com</a>{' '}
+          and we&apos;ll connect your accounts by hand.
+        </p>
+      ) : (
+        <>
+          {platforms.map((p) => {
+            const a = linked.get(p);
+            return (
+              <div className="acct-row" key={p}>
+                <span>{PLATFORM_LABEL[p] ?? p}</span>
+                <b style={{color: a ? '#34d399' : 'var(--faint)'}}>
+                  {a
+                    ? `✓ ${a.handle || a.displayName || 'Connected'}${a.reauthRequired ? ' — needs reconnecting' : ''}`
+                    : 'Not connected'}
+                </b>
+              </div>
+            );
+          })}
+          {social.unavailable && (
+            <p className="acct-muted" style={{fontSize: 13}}>
+              Couldn&apos;t reach the posting service just now — this list may be out of date.
+            </p>
+          )}
+          <p className="acct-muted" style={{fontSize: 13, marginBottom: 0}}>
+            {anyLinked
+              ? 'Reels post automatically to the accounts above after every job.'
+              : 'Connect an account and we’ll post your reels there automatically after every job.'}
+          </p>
+          <button className="btn checkout-btn" onClick={connect} disabled={busy}>
+            {busy ? 'Opening…' : anyLinked ? 'Manage connected accounts' : 'Connect my accounts'}
+          </button>
+          {err && <p className="checkout-msg">{err}</p>}
+        </>
+      )}
+    </div>
   );
 }
 

@@ -137,11 +137,16 @@ async function tick() {
   try {
     const {localPath} = await renderJob(job);
     console.log(`[render] job ${job.id} → rendered`);
-    if (AUTOPOST) {
+    if (!AUTOPOST) {
+      console.log(`[post] job ${job.id} SKIPPED (AUTOPOST off) — reel ready, not published`);
+    } else if (!job.customers?.upload_post_profile) {
+      // They haven't linked any socials yet. The reel rendered fine and is
+      // waiting in Studio — marking the job failed would be a lie.
+      await sb.from('jobs').update({status: 'done'}).eq('id', job.id);
+      console.log(`[post] job ${job.id} SKIPPED — no connected accounts yet; reel ready in Studio`);
+    } else {
       await postJob(job, localPath);
       console.log(`[post] job ${job.id} → published`);
-    } else {
-      console.log(`[post] job ${job.id} SKIPPED (AUTOPOST off) — reel ready, not published`);
     }
   } catch (err) {
     const failed = job.attempts + 1 >= MAX_ATTEMPTS;
