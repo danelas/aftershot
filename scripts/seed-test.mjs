@@ -1,4 +1,4 @@
-﻿// Seed one test customer + one pending job using the real driveway photos, so
+// Seed one test customer + one pending job using the real driveway photos, so
 // the worker has something to pick up. Proves the loop without any UI.
 //   node scripts/seed-test.mjs
 import {createClient} from '@supabase/supabase-js';
@@ -43,10 +43,10 @@ const {data: job} = await sb
     customer_id: customer.id,
     before_url: before,
     after_url: after,
-    hook: 'This driveway hadnâ€™t been cleaned in 10 years',
+    hook: 'This driveway hadn't been cleaned in 10 years',
     status: 'pending',
   })
   .select('id')
   .single();
 
-console.log('queued job', job.id, 'â€” start the worker: npm run worker');
+console.log('queued job', job.id, '— start the worker: npm run worker');
