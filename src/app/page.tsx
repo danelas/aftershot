@@ -10,7 +10,7 @@ export default function Home() {
             <a href="#how">How it works</a>
             <a href="#reels">What&apos;s on your reels</a>
             <a href="#pricing">Pricing</a>
-            <a href="/start" className="btn btn-sm">Start free</a>
+            <a href="/start" className="btn btn-sm">Start free trial</a>
           </div>
         </nav>
       </header>
@@ -23,8 +23,8 @@ export default function Home() {
             into a branded reel and posts it to your Instagram, TikTok, and YouTube —
             automatically. You never open an editor.
           </p>
-          <a href="/start" className="btn">Start free — set up in 2 minutes</a>
-          <p className="fine">$79/mo founding rate · normally $99–149 · cancel anytime</p>
+          <a href="/start" className="btn">Start free trial — set up in 2 minutes</a>
+          <p className="fine">7 days free · then $49/mo founding rate · cancel anytime</p>
         </div>
         <BeforeAfterSlider />
       </section>
@@ -116,18 +116,19 @@ export default function Home() {
           <div className="price-card">
             <div className="badge">FOUNDING RATE</div>
             <div>
-              <span className="price">$79<small>/mo</small></span>
-              <span className="was">$99–149</span>
+              <span className="price">$49<small>/mo</small></span>
+              <span className="was">$79</span>
             </div>
             <ul>
+              <li>7-day free trial — $0 today</li>
               <li>Unlimited before/after reels</li>
               <li>Auto-posting to Instagram, TikTok &amp; YouTube</li>
               <li>Branded sell-card with live Google rating</li>
               <li>Home-screen upload link — no app to install</li>
               <li>Reminders so no job goes unposted</li>
             </ul>
-            <a href="/start" className="btn" style={{width: '100%'}}>Start free</a>
-            <p className="fine">No contract. Cancel anytime.</p>
+            <a href="/start" className="btn" style={{width: '100%'}}>Start free trial</a>
+            <p className="fine">No contract. Cancel anytime — even mid-trial.</p>
           </div>
         </div>
       </section>
@@ -186,7 +187,7 @@ export default function Home() {
         <div className="container">
           <h2>Your next job is your next ad.</h2>
           <p>Set up once. Then just keep doing great work — we&apos;ll make sure everyone sees it.</p>
-          <a href="/start" className="btn">Start free — lock in $79/mo</a>
+          <a href="/start" className="btn">Start free trial — lock in $49/mo</a>
         </div>
       </section>
 

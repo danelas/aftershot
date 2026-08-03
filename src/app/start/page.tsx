@@ -71,9 +71,15 @@ export default function Start() {
         </p>
         <div style={{...card, wordBreak: 'break-all', fontFamily: 'monospace', fontSize: 15}}>{result.uploadUrl}</div>
         <button style={btn} onClick={() => navigator.clipboard?.writeText(result.uploadUrl)}>Copy link</button>
-        <p style={{marginTop: 22, fontSize: 14, opacity: 0.6, textAlign: 'center'}}>
-          Next: connect your Instagram / TikTok / YouTube so we can auto-post, and start your plan.
-          <br />(We&apos;ll email {f.email} the next steps.)
+        <a
+          href={`/subscribe?email=${encodeURIComponent(f.email)}`}
+          style={{...btn, marginTop: 12, textAlign: 'center', textDecoration: 'none', display: 'block'}}
+        >
+          Start your 7-day free trial →
+        </a>
+        <p style={{marginTop: 18, fontSize: 14, opacity: 0.6, textAlign: 'center'}}>
+          $0 today, then $49/mo. Cancel anytime.
+          <br />(We&apos;ll also email {f.email} the next steps.)
         </p>
       </main>
     );
