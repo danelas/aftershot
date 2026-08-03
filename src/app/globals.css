@@ -1,4 +1,23 @@
+@tailwind components;
+@tailwind utilities;
+
 :root {
+  /* Studio (ported PeekScout) theme tokens — dark editor chrome, sky accent. */
+  --ink-950: #0e0e14;
+  --ink-900: #17171f;
+  --ink-800: #20202a;
+  --ink-700: #2b2b37;
+  --mist-100: #f4f4f7;
+  --mist-200: #c9c9d4;
+  --mist-300: #adadbd;
+  --mist-400: #9494a4;
+  --mist-600: #6c6c7c;
+  --accent-200: #bae6fd;
+  --accent-300: #7dd3fc;
+  --accent-400: #38bdf8;
+  --accent-500: #0ea5e9;
+  --accent-600: #0284c7;
+
   --brand: #0ea5e9;
   --brand-dark: #0284c7;
   --brand-soft: #e0f2fe;
