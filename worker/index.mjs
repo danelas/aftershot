@@ -1,7 +1,7 @@
 // AfterShot worker — polls Supabase for pending jobs, renders the BeforeAfter
 // reel headless via Remotion, uploads to Storage, then hands off to the poster.
-// Runs as a Render cron/background worker (mirrors pro-email-extractor). Retries
-// with backoff — learned from PeekScout's upload-post poll-timeout failures.
+// Runs as a GitHub Actions cron (WORKER_ONCE=1: drain the queue, then exit —
+// see .github/workflows/worker.yml) or as a long-lived local loop.
 import 'dotenv/config';
 import {createClient} from '@supabase/supabase-js';
 import {bundle} from '@remotion/bundler';
@@ -154,10 +154,31 @@ async function tick() {
   return true;
 }
 
-// Poll loop.
+// A job stuck in 'rendering' means a previous run crashed mid-render (e.g. a
+// killed CI runner). Put anything older than 15 minutes back in the queue.
+async function reclaimStale() {
+  const cutoff = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+  const {data} = await sb
+    .from('jobs')
+    .update({status: 'pending'})
+    .eq('status', 'rendering')
+    .lt('created_at', cutoff)
+    .select('id');
+  for (const j of data || []) console.log(`[reclaim] job ${j.id} back to pending`);
+}
+
 const POLL_MS = 15000;
 async function main() {
   console.log('AfterShot worker up.');
+  await reclaimStale();
+  // Drain mode (CI cron): render until the queue is empty, then exit.
+  if (process.env.WORKER_ONCE === '1') {
+    let n = 0;
+    while (await tick()) n++;
+    console.log(`drained — ${n} job(s) processed.`);
+    return;
+  }
+  // Long-lived poll loop (local dev / a persistent host).
   for (;;) {
     let worked = false;
     try {

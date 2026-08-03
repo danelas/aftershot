@@ -1,0 +1,55 @@
+name: render-worker
+
+# Renders queued before/after reels every ~10 minutes. A cheap pre-check hits
+# the Supabase REST API first so quiet runs skip the npm install entirely.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: render-worker
+  cancel-in-progress: false
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check for pending jobs
+        id: pending
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          rows=$(curl -sf "$SUPABASE_URL/rest/v1/jobs?status=in.(pending,rendering)&select=id&limit=1" \
+            -H "apikey: $SERVICE_KEY" -H "Authorization: Bearer $SERVICE_KEY" || echo '[]')
+          if [ "$rows" = "[]" ]; then
+            echo "queue empty — skipping"
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.pending.outputs.run == 'true'
+
+      - uses: actions/setup-node@v4
+        if: steps.pending.outputs.run == 'true'
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        if: steps.pending.outputs.run == 'true'
+        run: npm ci
+
+      - name: Drain the render queue
+        if: steps.pending.outputs.run == 'true'
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          UPLOAD_POST_API_KEY: ${{ secrets.UPLOAD_POST_API_KEY }}
+          AUTOPOST: ${{ vars.AUTOPOST || '0' }}
+          WORKER_ONCE: "1"
+        run: node worker/index.mjs
