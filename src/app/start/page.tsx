@@ -159,7 +159,15 @@ export default function Start() {
               ))}
             </div>
           )}
-          {f.placeId && <p className="onb-linked">✓ Linked to Google — live rating {String(f.rating)} ({String(f.reviewCount)} reviews)</p>}
+          {f.placeId && (
+            <p className="onb-linked">
+              {f.rating === ''
+                // Real case: newer trades are on Google with zero reviews. Still
+                // worth linking — the rating syncs itself once they get some.
+                ? '✓ Linked to Google — no reviews there yet, so the reel skips the rating for now'
+                : `✓ Linked to Google — live rating ${f.rating} (${f.reviewCount} reviews)`}
+            </p>
+          )}
           {lookupNote && !f.placeId && <p className="onb-note">{lookupNote}</p>}
           {manualRating && !f.placeId && (
             <div className="onb-row">
