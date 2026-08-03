@@ -1,4 +1,4 @@
-import BeforeAfterSlider from './components/BeforeAfterSlider';
+import DemoShowcase from './components/DemoShowcase';
 import Reveal from './components/Reveal';
 import {
   Camera, Wand, Send, Star, Phone, Shield, MapPin, Palette, Music,
@@ -68,7 +68,7 @@ export default function Home() {
           </div>
           <p className="fine">7 days free · plans from $19/mo · cancel anytime</p>
         </div>
-        <BeforeAfterSlider />
+        <DemoShowcase />
       </section>
 
       <section className="section alt" id="how">
