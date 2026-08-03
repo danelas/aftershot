@@ -47,12 +47,19 @@ async function publicUrl(bucket, storagePath) {
   return sb.storage.from(bucket).getPublicUrl(storagePath).data.publicUrl;
 }
 
+// intake is a PRIVATE bucket — public URLs 400. Sign a short-lived read URL.
+async function signedUrl(bucket, storagePath, expiresIn = 3600) {
+  const {data, error} = await sb.storage.from(bucket).createSignedUrl(storagePath, expiresIn);
+  if (error) throw new Error(`sign ${bucket}/${storagePath}: ${error.message}`);
+  return data.signedUrl;
+}
+
 async function renderJob(job) {
   const c = job.customers;
   const serveUrl = await getBundle();
   const inputProps = {
-    beforeUrl: await publicUrl('intake', job.before_url),
-    afterUrl: await publicUrl('intake', job.after_url),
+    beforeUrl: await signedUrl('intake', job.before_url),
+    afterUrl: await signedUrl('intake', job.after_url),
     beforeIsVideo: job.before_is_video,
     afterIsVideo: job.after_is_video,
     businessName: c.business_name,
