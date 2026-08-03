@@ -9,7 +9,8 @@ import {useSearchParams} from 'next/navigation';
 import {Clapperboard, Wand2} from 'lucide-react';
 import VideoStudio from '@/components/VideoStudio';
 import {uploadToStorage} from '@/lib/upload';
-import type {BrandKit} from '@/lib/studio';
+import type {AutoDirectResult, BrandKit} from '@/lib/studio';
+import type {CaptionSegment} from '@/lib/captions';
 
 type Clip = {id: string; url: string; createdAt: string};
 type Customer = {
@@ -86,6 +87,35 @@ function StudioInner() {
     return url;
   }
 
+  // AI Auto-Director (Magic edit) — included with every plan, no credits.
+  async function autoDirect(args: {captions: CaptionSegment[] | null; hasWords: boolean}): Promise<AutoDirectResult> {
+    try {
+      const res = await fetch('/api/studio/direct', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({token, captions: args.captions, hasWords: args.hasWords}),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok || !d.ok) {
+        return {
+          ok: false,
+          message: d.reason === 'not_configured' ? 'AI edits aren’t available right now.' : d.error || 'Couldn’t auto-edit — try again.',
+        };
+      }
+      return {
+        ok: true,
+        overlays: d.overlays,
+        captionStyle: d.captionStyle,
+        music: d.music ?? null,
+        rationale: d.rationale || '',
+        freeRemaining: 999,
+        credits: 0,
+      };
+    } catch {
+      return {ok: false, message: 'Couldn’t auto-edit — try again.'};
+    }
+  }
+
   function deliver(file: File) {
     const mobile = /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
     if (mobile && navigator.canShare?.({files: [file]})) {
@@ -124,8 +154,9 @@ function StudioInner() {
           <Wand2 className="h-5 w-5 text-accent-400" /> Studio
         </p>
         <p className="mt-1 text-sm text-mist-300">
-          {customer.businessName} — tap a reel to edit it: text, stickers, your live Google rating,
-          a tap-to-call QR, music, and trim. Save it back and the edited version is what gets posted.
+          {customer.businessName} — tap a reel and hit <b style={{color: 'var(--mist-100)'}}>Magic edit</b> to
+          have AI direct it, or do it yourself: text, stickers, your live Google rating, a tap-to-call QR,
+          music, and trim. Save it back and the edited version is what gets posted.
         </p>
 
         {clips.length === 0 ? (
@@ -173,6 +204,7 @@ function StudioInner() {
           introOffer={null}
           storedCaptions={null}
           brandKit={customer.brandKit}
+          onAutoDirect={autoDirect}
           onSaveBrand={saveBrand}
           onUploadLogo={uploadLogo}
           onSaveToChannel={(file) => saveToChannel(file, clips[open].id)}

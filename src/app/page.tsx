@@ -13,7 +13,7 @@ const TIERS = [
       'Auto-posting to Instagram, TikTok & YouTube',
       'Branded sell-card with live Google rating',
       'Home-screen upload link — no app',
-      'Edit any reel in Studio',
+      'Studio editing + AI Magic edit',
     ],
   },
   {
@@ -179,6 +179,7 @@ export default function Home() {
               </p>
               <ul className="studio-list">
                 {[
+                  ['Magic edit (AI)', 'One tap and AI directs the whole edit — writes the hook, drops in your rating and call stickers, picks the music.'],
                   ['Trim & reorder', 'Cut the clip, change the reveal timing, swap which shot leads.'],
                   ['Swap the music', 'Pick from our licensed track library until it feels right.'],
                   ['Captions & text', 'Add a hook line or price callout with clean, readable styling.'],
@@ -195,6 +196,7 @@ export default function Home() {
           <Reveal delay={150}>
             <div className="studio-visual" aria-hidden="true">
               <div className="bar"><span className="dot" /><span className="dot" /><span className="dot" /></div>
+              <div className="studio-row"><span className="sicon"><Wand size={17} /></span> Magic edit — AI-directed <span className="meter"><i style={{width: '92%'}} /></span></div>
               <div className="studio-row"><span className="sicon"><Play size={17} /></span> driveway-job-14.mp4 <span className="meter"><i style={{width: '68%'}} /></span></div>
               <div className="studio-row"><span className="sicon"><Scissors size={17} /></span> Trim <span className="meter"><i style={{width: '42%'}} /></span></div>
               <div className="studio-row"><span className="sicon"><Music size={17} /></span> Track: Uplift <span className="meter"><i style={{width: '80%'}} /></span></div>
