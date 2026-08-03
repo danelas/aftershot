@@ -2,7 +2,7 @@
 
 // Minimal on-page checkout: email → card (Stripe Payment Element) → trialing
 // subscription. Card is saved via SetupIntent; first charge after the trial.
-import {Suspense, useRef, useState} from 'react';
+import {Suspense, useEffect, useRef, useState} from 'react';
 import {useSearchParams} from 'next/navigation';
 import {loadStripe, type Stripe, type StripeElements} from '@stripe/stripe-js';
 
@@ -44,12 +44,17 @@ function SubscribeInner() {
       });
       elementsRef.current = elements;
       setStep('card');
-      // Mount after the container renders.
-      requestAnimationFrame(() => elements.create('payment').mount('#payment-el'));
     } catch (e: any) {
       setMsg(e?.message || 'Something went wrong.');
     } finally { setBusy(false); }
   }
+
+  // Mount once the card step's container is actually in the DOM.
+  useEffect(() => {
+    if (step === 'card' && elementsRef.current) {
+      elementsRef.current.create('payment').mount('#payment-el');
+    }
+  }, [step]);
 
   async function confirm() {
     const stripe = stripeRef.current, elements = elementsRef.current;
