@@ -100,11 +100,45 @@ const Label: React.FC<{text: string; color: string}> = ({text, color}) => (
   </div>
 );
 
-const Pill: React.FC<{children: React.ReactNode}> = ({children}) => (
-  <div style={{background: 'rgba(255,255,255,0.18)', border: '2px solid rgba(255,255,255,0.5)', borderRadius: 999, padding: '14px 28px', fontFamily: SANS, fontWeight: 800, fontSize: 34, color: '#fff', letterSpacing: 0.5}}>
-    {children}
-  </div>
-);
+// The sell card sits ON the brand colour, so nothing on it can assume white
+// text. A bright brand (yellow, lime, cyan) puts white at ~1.8:1 — unreadable.
+// Pick ink or white from the background's luminance instead.
+const INK = '#0B0B0B';
+
+function relLuminance(hex: string): number {
+  const m = hex.replace('#', '').match(/../g);
+  if (!m || m.length < 3) return 0;
+  const [r, g, b] = m.slice(0, 3).map((h) => {
+    const v = parseInt(h, 16) / 255;
+    return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+function contrast(a: string, b: string): number {
+  const [hi, lo] = [relLuminance(a), relLuminance(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+}
+// 3:1 is the WCAG AA bar for large/display text, which is all this card has
+// (78-92px). Note this also flips the DEFAULT #0EA5E9 brand to black text —
+// white on that sky blue is only 2.77:1, which is genuinely hard to read on a
+// phone outdoors, the exact place these reels get watched.
+const DISPLAY_CONTRAST = 3;
+/** Readable text colour for content sitting on `bg`. */
+const readableOn = (bg: string) => (contrast('#ffffff', bg) >= DISPLAY_CONTRAST ? '#ffffff' : INK);
+
+const Pill: React.FC<{children: React.ReactNode; ink: string}> = ({children, ink}) => {
+  const dark = ink === INK;
+  return (
+    <div style={{
+      background: dark ? 'rgba(0,0,0,0.10)' : 'rgba(255,255,255,0.18)',
+      border: `2px solid ${dark ? 'rgba(0,0,0,0.30)' : 'rgba(255,255,255,0.5)'}`,
+      borderRadius: 999, padding: '14px 28px', fontFamily: SANS, fontWeight: 800,
+      fontSize: 34, color: ink, letterSpacing: 0.5,
+    }}>
+      {children}
+    </div>
+  );
+};
 
 export const BeforeAfter: React.FC<BeforeAfterProps> = (props) => {
   const frame = useCurrentFrame();
@@ -113,6 +147,9 @@ export const BeforeAfter: React.FC<BeforeAfterProps> = (props) => {
   const wipe = interpolate(frame, [revealStart, revealStart + WIPE], [0, 100], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
   const hookIn = spring({frame, fps, config: {damping: 200}});
   const endStart = BEFORE_HOLD + WIPE + AFTER_HOLD;
+  // Sell-card text colours, derived from the brand so bright brands stay legible.
+  const endInk = readableOn(props.brandColor);
+  const ctaInk = contrast(props.brandColor, '#ffffff') >= DISPLAY_CONTRAST ? props.brandColor : INK;
 
   return (
     <AbsoluteFill style={{backgroundColor: '#000'}}>
@@ -144,28 +181,29 @@ export const BeforeAfter: React.FC<BeforeAfterProps> = (props) => {
       <Sequence from={endStart} durationInFrames={END_CARD}>
         <AbsoluteFill style={{backgroundColor: props.brandColor, alignItems: 'center', justifyContent: 'center', gap: 30, padding: '0 70px'}}>
           {props.logoUrl ? <Img src={props.logoUrl} style={{width: 210, height: 210, objectFit: 'contain'}} /> : null}
-          <div style={{fontFamily, fontSize: 92, color: '#fff', textAlign: 'center', lineHeight: 1}}>{props.businessName}</div>
+          <div style={{fontFamily, fontSize: 92, color: endInk, textAlign: 'center', lineHeight: 1}}>{props.businessName}</div>
 
           {props.rating ? (
-            <div style={{display: 'flex', alignItems: 'center', gap: 12, fontFamily: SANS, fontWeight: 800, fontSize: 40, color: '#fff'}}>
+            <div style={{display: 'flex', alignItems: 'center', gap: 12, fontFamily: SANS, fontWeight: 800, fontSize: 40, color: endInk}}>
               <Star /> {props.rating.toFixed(1)}{props.reviewCount ? ` (${props.reviewCount})` : ''} · Google
             </div>
           ) : null}
 
           <div style={{display: 'flex', gap: 16, flexWrap: 'wrap', justifyContent: 'center'}}>
-            {props.licensedInsured ? <Pill>Licensed &amp; Insured</Pill> : null}
-            {props.serviceArea ? <Pill>Serving {props.serviceArea}</Pill> : null}
+            {props.licensedInsured ? <Pill ink={endInk}>Licensed &amp; Insured</Pill> : null}
+            {props.serviceArea ? <Pill ink={endInk}>Serving {props.serviceArea}</Pill> : null}
           </div>
 
           {props.phone ? (
-            <div style={{marginTop: 14, background: '#fff', borderRadius: 22, padding: '22px 44px', textAlign: 'center', boxShadow: '0 12px 40px rgba(0,0,0,0.25)'}}>
-              <div style={{fontFamily: SANS, fontWeight: 900, fontSize: 30, letterSpacing: 2, color: props.brandColor}}>CALL OR TEXT · {props.ctaText.toUpperCase()}</div>
-              <div style={{fontFamily, fontSize: 78, color: '#0f172a', lineHeight: 1.05}}>{props.phone}</div>
+            <div style={{marginTop: 14, background: '#fff', borderRadius: 22, padding: '26px 44px 30px', textAlign: 'center', boxShadow: '0 12px 40px rgba(0,0,0,0.25)'}}>
+              {/* ctaInk, not the raw brand: a bright brand on white is ~1.8:1. */}
+              <div style={{fontFamily: SANS, fontWeight: 900, fontSize: 30, letterSpacing: 2, color: ctaInk, lineHeight: 1.2}}>CALL OR TEXT · {props.ctaText.toUpperCase()}</div>
+              <div style={{fontFamily, fontSize: 78, color: INK, lineHeight: 1.05, marginTop: 16}}>{props.phone}</div>
             </div>
           ) : null}
 
           {props.priceFrom ? (
-            <div style={{fontFamily: SANS, fontWeight: 800, fontSize: 38, color: 'rgba(255,255,255,0.95)'}}>Driveways from {props.priceFrom}</div>
+            <div style={{fontFamily: SANS, fontWeight: 800, fontSize: 38, color: endInk, opacity: 0.95}}>From {props.priceFrom}</div>
           ) : null}
         </AbsoluteFill>
       </Sequence>
