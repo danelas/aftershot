@@ -72,13 +72,13 @@ export default function Start() {
         <div style={{...card, wordBreak: 'break-all', fontFamily: 'monospace', fontSize: 15}}>{result.uploadUrl}</div>
         <button style={btn} onClick={() => navigator.clipboard?.writeText(result.uploadUrl)}>Copy link</button>
         <a
-          href={`/subscribe?email=${encodeURIComponent(f.email)}`}
+          href={`/subscribe?email=${encodeURIComponent(f.email)}${planParam()}`}
           style={{...btn, marginTop: 12, textAlign: 'center', textDecoration: 'none', display: 'block'}}
         >
           Start your 7-day free trial →
         </a>
         <p style={{marginTop: 18, fontSize: 14, opacity: 0.6, textAlign: 'center'}}>
-          $0 today, then $49/mo. Cancel anytime.
+          $0 today. Plans from $19/mo, cancel anytime.
           <br />(We&apos;ll also email {f.email} the next steps.)
         </p>
       </main>
@@ -140,6 +140,14 @@ export default function Start() {
       </button>
     </main>
   );
+}
+
+// Carries ?plan= from the pricing card through to checkout. Only rendered
+// after user interaction, so no SSR/hydration mismatch.
+function planParam() {
+  if (typeof window === 'undefined') return '';
+  const plan = new URLSearchParams(window.location.search).get('plan');
+  return plan ? `&plan=${encodeURIComponent(plan)}` : '';
 }
 
 function Section({title, children}: {title: string; children: React.ReactNode}) {

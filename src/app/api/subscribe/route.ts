@@ -1,11 +1,12 @@
 import {NextRequest, NextResponse} from 'next/server';
 import Stripe from 'stripe';
-import {stripe, monthlyPriceId, PLAN} from '@/lib/stripe';
+import {stripe, planPriceId, isPlanId, TRIAL_DAYS} from '@/lib/stripe';
 
 // Creates a trialing subscription and returns the SetupIntent client secret so
 // the card can be collected on-page. No charge until the 7-day trial ends.
 export async function POST(req: NextRequest) {
-  const {email, businessName} = await req.json().catch(() => ({}));
+  const {email, businessName, plan} = await req.json().catch(() => ({}));
+  const planId = isPlanId(plan) ? plan : 'pro';
   if (!email || typeof email !== 'string' || !email.includes('@')) {
     return NextResponse.json({error: 'A valid email is required.'}, {status: 400});
   }
@@ -26,10 +27,23 @@ export async function POST(req: NextRequest) {
     if (sub && !sub.pending_setup_intent) {
       return NextResponse.json({alreadySubscribed: true});
     }
+    // Returning visitor who picked a different tier before ever adding a card:
+    // move the unconfirmed subscription to the newly chosen price.
+    if (sub) {
+      const wantPrice = await planPriceId(planId);
+      const item = sub.items.data[0];
+      if (item && item.price.id !== wantPrice) {
+        sub = await s.subscriptions.update(sub.id, {
+          items: [{id: item.id, price: wantPrice}],
+          proration_behavior: 'none',
+          expand: ['pending_setup_intent'],
+        });
+      }
+    }
     sub ??= await s.subscriptions.create({
       customer: customer.id,
-      items: [{price: await monthlyPriceId()}],
-      trial_period_days: PLAN.trialDays,
+      items: [{price: await planPriceId(planId)}],
+      trial_period_days: TRIAL_DAYS,
       payment_behavior: 'default_incomplete',
       payment_settings: {save_default_payment_method: 'on_subscription'},
       trial_settings: {end_behavior: {missing_payment_method: 'cancel'}},

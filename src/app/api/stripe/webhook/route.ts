@@ -1,6 +1,6 @@
 import {NextRequest, NextResponse} from 'next/server';
 import Stripe from 'stripe';
-import {stripe} from '@/lib/stripe';
+import {stripe, PLANS} from '@/lib/stripe';
 import {serviceClient} from '@/lib/supabase';
 
 // Stripe → app sync. Keeps customers.plan/status current so the worker knows
@@ -39,7 +39,9 @@ async function syncSubscription(sub: Stripe.Subscription) {
     return;
   }
   const customerId = typeof sub.customer === 'string' ? sub.customer : sub.customer.id;
-  const plan = sub.status === 'trialing' ? 'trial' : 'founding';
+  const lookup = sub.items.data[0]?.price?.lookup_key;
+  const tier = (Object.entries(PLANS).find(([, p]) => p.lookupKey === lookup)?.[0]) ?? 'pro';
+  const plan = sub.status === 'trialing' ? `trial:${tier}` : tier;
   const status =
     ['trialing', 'active'].includes(sub.status) ? 'active'
     : ['past_due', 'unpaid', 'paused'].includes(sub.status) ? 'paused'
