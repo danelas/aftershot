@@ -64,6 +64,9 @@ const WIPE = 24;
 const AFTER_HOLD = 96;
 const END_CARD = 84;
 export const beforeAfterDuration = () => BEFORE_HOLD + WIPE + AFTER_HOLD + END_CARD;
+const TOTAL = BEFORE_HOLD + WIPE + AFTER_HOLD + END_CARD;
+const MUSIC_GAIN = 0.55;
+const MUSIC_FADE = 26; // ~0.9s tail
 
 const cover: React.CSSProperties = {position: 'absolute', width: '100%', height: '100%', objectFit: 'cover'};
 
@@ -153,7 +156,21 @@ export const BeforeAfter: React.FC<BeforeAfterProps> = (props) => {
 
   return (
     <AbsoluteFill style={{backgroundColor: '#000'}}>
-      {props.musicSrc ? <Audio src={props.musicSrc} volume={0.55} /> : null}
+      {/* Most library tracks are ~50s, so without a fade the reel ends on a hard
+          cut mid-bar. Short fade in as well so it doesn't pop on frame 0. */}
+      {props.musicSrc ? (
+        <Audio
+          src={props.musicSrc}
+          volume={(f) =>
+            interpolate(
+              f,
+              [0, 8, TOTAL - MUSIC_FADE, TOTAL],
+              [0, MUSIC_GAIN, MUSIC_GAIN, 0],
+              {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'},
+            )
+          }
+        />
+      ) : null}
       {/* SFX: whoosh as the wipe starts, sparkle when it lands. */}
       <Sequence from={revealStart - 3} durationInFrames={20}><Audio src={staticFile('sfx/whoosh.mp3')} volume={0.8} /></Sequence>
       <Sequence from={revealStart + WIPE - 3} durationInFrames={24}><Audio src={staticFile('sfx/sparkle.mp3')} volume={0.7} /></Sequence>

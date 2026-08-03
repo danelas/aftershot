@@ -44,9 +44,24 @@ const scale = Number(arg('scale', '0.75'));
 // two files over plain HTTP is the one approach that doesn't depend on where
 // the bundler decides to mount public/.
 const MIME = {'.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.mp4': 'video/mp4', '.mov': 'video/quicktime'};
+// --music takes a track name (energy, sport, epic, hiphop, pop, uplift) or a
+// path to your own file.
+const musicArg = arg('music');
+let musicPath = null;
+if (musicArg) {
+  const builtin = path.resolve('public/music', `${musicArg}.mp3`);
+  musicPath = fs.existsSync(builtin) ? builtin : path.resolve(musicArg);
+  if (!fs.existsSync(musicPath)) {
+    const have = fs.readdirSync(path.resolve('public/music')).filter((f) => f.endsWith('.mp3')).map((f) => f.replace('.mp3', ''));
+    console.error(`--music "${musicArg}" not found. Built-in tracks: ${have.join(', ')}`);
+    process.exit(1);
+  }
+}
+
 const served = {
   '/before': path.resolve(beforePath),
   '/after': path.resolve(afterPath),
+  ...(musicPath ? {'/music': musicPath} : {}),
 };
 const server = http.createServer((req, res) => {
   const file = served[(req.url || '').split('?')[0]];
@@ -66,7 +81,7 @@ const inputProps = {
   hook: arg('hook', "You won't believe the difference"),
   brandColor: arg('color', '#0EA5E9'),
   logoUrl: arg('logo', null),
-  musicSrc: null,
+  musicSrc: musicPath ? `${origin}/music` : null,
   phone: arg('phone', null),
   handle: arg('handle', null),
   serviceArea: arg('area', null),
