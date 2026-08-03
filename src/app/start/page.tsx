@@ -162,7 +162,7 @@ function Section({title, children}: {title: string; children: React.ReactNode}) 
 const wrap: React.CSSProperties = {maxWidth: 460, margin: '0 auto', padding: 24, display: 'flex', flexDirection: 'column', minHeight: '100dvh', justifyContent: 'center', fontFamily: 'system-ui, sans-serif'};
 const input: React.CSSProperties = {width: '100%', padding: 13, borderRadius: 12, border: '1px solid #e2e8f0', marginBottom: 10, fontSize: 16, boxSizing: 'border-box'};
 const btn: React.CSSProperties = {background: '#0EA5E9', color: '#fff', border: 0, borderRadius: 14, padding: '15px 20px', fontSize: 17, fontWeight: 700, cursor: 'pointer'};
-const card: React.CSSProperties = {background: '#f1f5f9', borderRadius: 12, padding: 16, marginBottom: 14, width: '100%', boxSizing: 'border-box'};
+const card: React.CSSProperties = {background: '#f1f5f9', color: '#0f172a', borderRadius: 12, padding: 16, marginBottom: 14, width: '100%', boxSizing: 'border-box'};
 const picker: React.CSSProperties = {display: 'flex', flexDirection: 'column', gap: 4, border: '2px dashed #cbd5e1', borderRadius: 12, padding: 16, marginBottom: 10, cursor: 'pointer'};
 const rowBetween: React.CSSProperties = {display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 2px', marginBottom: 6, fontSize: 16};
-const matchRow: React.CSSProperties = {display: 'block', width: '100%', textAlign: 'left', padding: 12, border: 0, borderBottom: '1px solid #f1f5f9', background: '#fff', cursor: 'pointer', fontSize: 14};
+const matchRow: React.CSSProperties = {display: 'block', width: '100%', textAlign: 'left', padding: 12, border: 0, borderBottom: '1px solid #f1f5f9', background: '#fff', color: '#0f172a', cursor: 'pointer', fontSize: 14};

@@ -51,7 +51,7 @@ function SubscribeInner() {
       stripeRef.current = stripe;
       elementsRef.current = stripe.elements({
         clientSecret: d.clientSecret,
-        appearance: {variables: {colorPrimary: '#0EA5E9', borderRadius: '12px'}},
+        appearance: {theme: 'night', variables: {colorPrimary: '#38bdf8', borderRadius: '12px'}},
       });
       setStep('card');
     } catch (e: any) {

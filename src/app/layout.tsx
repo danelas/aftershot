@@ -1,5 +1,9 @@
 import type {Metadata, Viewport} from 'next';
+import {Sora, Inter} from 'next/font/google';
 import './globals.css';
+
+const sora = Sora({subsets: ['latin'], weight: ['600', '700', '800'], variable: '--font-display'});
+const inter = Inter({subsets: ['latin'], variable: '--font-body'});
 
 export const metadata: Metadata = {
   title: 'AfterShot — Your before & afters, posted for you',
@@ -14,7 +18,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({children}: {children: React.ReactNode}) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${sora.variable} ${inter.variable}`}>
       <body>{children}</body>
     </html>
   );

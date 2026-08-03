@@ -41,39 +41,54 @@ const TIERS = [
 export default function Home() {
   return (
     <>
-      <header className="container">
-        <nav className="nav">
-          <a href="/" className="logo">After<span>Shot</span></a>
-          <div className="nav-links">
-            <a href="#how">How it works</a>
-            <a href="#studio">Studio</a>
-            <a href="#pricing">Pricing</a>
-            <a href="/start" className="btn btn-sm">Start free trial</a>
-          </div>
-        </nav>
-      </header>
+      <div className="nav-shell">
+        <header className="container">
+          <nav className="nav">
+            <a href="/" className="logo">After<span>Shot</span></a>
+            <div className="nav-links">
+              <a href="#how">How it works</a>
+              <a href="#studio">Studio</a>
+              <a href="#pricing">Pricing</a>
+              <a href="/start" className="btn btn-sm">Start free trial</a>
+            </div>
+          </nav>
+        </header>
+      </div>
 
-      <section className="container hero">
-        <div>
-          <span className="hero-badge"><Zap size={15} /> Post every job without lifting a finger</span>
-          <h1>Your before &amp; afters, <em>posted for you.</em></h1>
-          <p className="sub">
-            You already take the photos. AfterShot turns each job&apos;s before + after
-            into a branded reel and posts it to your Instagram, TikTok, and YouTube —
-            automatically. You never open an editor.
-          </p>
-          <div className="cta-row">
-            <a href="/start" className="btn">Start free trial <ArrowRight size={18} /></a>
-            <a href="#how" className="btn btn-ghost">See how it works</a>
+      <div className="hero-wrap">
+        <span className="glow glow-hero" />
+        <span className="glow glow-hero-2" />
+        <section className="container hero">
+          <div>
+            <span className="hero-badge"><Zap size={14} /> Post every job without lifting a finger</span>
+            <h1>Your before &amp; afters, <em>posted for you.</em></h1>
+            <p className="sub">
+              You already take the photos. AfterShot turns each job&apos;s before + after
+              into a <b>branded reel</b> and posts it to your Instagram, TikTok, and
+              YouTube — automatically. You never open an editor.
+            </p>
+            <div className="cta-row">
+              <a href="/start" className="btn">Start free trial <ArrowRight size={18} /></a>
+              <a href="#how" className="btn btn-ghost">See how it works</a>
+            </div>
+            <p className="fine">7 days free · plans from $19/mo · cancel anytime</p>
+            <div className="posts-to">
+              Posts to
+              <span className="pill-row">
+                <span className="p-pill">Instagram Reels</span>
+                <span className="p-pill">TikTok</span>
+                <span className="p-pill">YouTube Shorts</span>
+              </span>
+            </div>
           </div>
-          <p className="fine">7 days free · plans from $19/mo · cancel anytime</p>
-        </div>
-        <DemoShowcase />
-      </section>
+          <DemoShowcase />
+        </section>
+      </div>
 
       <section className="section alt" id="how">
         <div className="container">
           <Reveal>
+            <span className="kicker">HOW IT WORKS</span>
             <h2>Two taps per job. That&apos;s the whole workflow.</h2>
             <p className="lead">
               Built for pressure washers, detailers, and landscapers who&apos;d rather be
@@ -123,6 +138,7 @@ export default function Home() {
       <section className="section" id="reels">
         <div className="container">
           <Reveal>
+            <span className="kicker">BUILT TO CONVERT</span>
             <h2>Every reel sells for you</h2>
             <p className="lead">
               These aren&apos;t generic slideshows. Each reel ends with a card built to
@@ -154,6 +170,7 @@ export default function Home() {
         <div className="container studio-band">
           <Reveal>
             <div>
+              <span className="kicker">THE STUDIO</span>
               <h2>Want it your way? Open Studio.</h2>
               <p className="lead">
                 Every reel is ready to post as-is — but when you want control, each
@@ -188,8 +205,10 @@ export default function Home() {
       </section>
 
       <section className="section" id="pricing">
+        <span className="glow glow-pricing" />
         <div className="container">
           <Reveal>
+            <span className="kicker">PRICING</span>
             <h2>Pick your pace</h2>
             <p className="lead">
               Every plan is the full product — auto-posting, branded reels, Studio
@@ -227,6 +246,7 @@ export default function Home() {
       <section className="section alt">
         <div className="container">
           <Reveal>
+            <span className="kicker">FAQ</span>
             <h2>Questions</h2>
             <p className="lead" />
           </Reveal>
@@ -293,9 +313,10 @@ export default function Home() {
       </section>
 
       <section className="final">
+        <span className="glow-final" />
         <div className="container">
           <Reveal>
-            <h2>Your next job is your next ad.</h2>
+            <h2>Your next job is <em>your next ad.</em></h2>
             <p>Set up once. Then just keep doing great work — we&apos;ll make sure everyone sees it.</p>
             <a href="/start" className="btn">Start your free trial <ArrowRight size={18} /></a>
           </Reveal>
