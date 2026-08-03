@@ -1,4 +1,4 @@
-// Seed one test customer + one pending job using the real driveway photos, so
+﻿// Seed one test customer + one pending job using the real driveway photos, so
 // the worker has something to pick up. Proves the loop without any UI.
 //   node scripts/seed-test.mjs
 import {createClient} from '@supabase/supabase-js';
@@ -8,7 +8,7 @@ import 'dotenv/config';
 const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
 // Reuse or create the test customer.
-let {data: customer} = await sb.from('customers').select('*').eq('email', 'test@aftershot.app').maybeSingle();
+let {data: customer} = await sb.from('customers').select('*').eq('email', 'test@theaftershot.com').maybeSingle();
 if (!customer) {
   ({data: customer} = await sb
     .from('customers')
@@ -17,7 +17,7 @@ if (!customer) {
       trade: 'pressure_washing',
       city: 'Jupiter, FL',
       brand_color: '#0EA5E9',
-      email: 'test@aftershot.app',
+      email: 'test@theaftershot.com',
       upload_post_profile: process.env.UPLOAD_POST_USER || 'test',
       platforms: ['instagram', 'tiktok', 'youtube'],
     })
@@ -43,10 +43,10 @@ const {data: job} = await sb
     customer_id: customer.id,
     before_url: before,
     after_url: after,
-    hook: 'This driveway hadn’t been cleaned in 10 years',
+    hook: 'This driveway hadnâ€™t been cleaned in 10 years',
     status: 'pending',
   })
   .select('id')
   .single();
 
-console.log('queued job', job.id, '— start the worker: npm run worker');
+console.log('queued job', job.id, 'â€” start the worker: npm run worker');
