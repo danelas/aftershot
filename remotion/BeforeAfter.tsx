@@ -1,3 +1,4 @@
+import {useEffect, useState} from 'react';
 import {
   AbsoluteFill,
   Img,
@@ -9,6 +10,8 @@ import {
   useCurrentFrame,
   useVideoConfig,
   staticFile,
+  delayRender,
+  continueRender,
 } from 'remotion';
 import {z} from 'zod';
 import {loadFont} from '@remotion/google-fonts/Anton';
@@ -134,6 +137,44 @@ const DISPLAY_CONTRAST = 3;
 /** Readable text colour for content sitting on `bg`. */
 const readableOn = (bg: string) => (contrast('#ffffff', bg) >= DISPLAY_CONTRAST ? '#ffffff' : INK);
 
+// A fixed 210x210 contain box punished wide wordmarks: a 4:1 logo fitted to
+// width and rendered ~52px tall, a fraction of the space a square logo got.
+// Fit the real aspect ratio into a bounding box instead, so every shape gets
+// comparable presence — and small sources scale UP rather than sitting tiny on
+// a 1080-wide canvas.
+const LOGO_MAX_W = 620; // canvas is 1080 with 70px padding each side
+const LOGO_MAX_H = 200;
+
+const BrandLogo: React.FC<{src: string}> = ({src}) => {
+  const [box, setBox] = useState<{w: number; h: number} | null>(null);
+  // Hold the render until the natural size is known, otherwise the first
+  // frames would lay out against a guess.
+  const [handle] = useState(() => delayRender(`logo:${src}`));
+
+  useEffect(() => {
+    let cancelled = false;
+    const img = new Image();
+    img.onload = () => {
+      if (cancelled) return;
+      const {naturalWidth: w, naturalHeight: h} = img;
+      const scale = w && h ? Math.min(LOGO_MAX_W / w, LOGO_MAX_H / h) : 1;
+      setBox({w: Math.round(w * scale), h: Math.round(h * scale)});
+      continueRender(handle);
+    };
+    // A broken logo must not hang the render — fall back to the square box.
+    img.onerror = () => {
+      if (cancelled) return;
+      setBox({w: LOGO_MAX_H, h: LOGO_MAX_H});
+      continueRender(handle);
+    };
+    img.src = src;
+    return () => { cancelled = true; };
+  }, [src, handle]);
+
+  if (!box) return null;
+  return <Img src={src} style={{width: box.w, height: box.h, objectFit: 'contain'}} />;
+};
+
 const Pill: React.FC<{children: React.ReactNode; ink: string}> = ({children, ink}) => {
   const dark = ink === INK;
   return (
@@ -207,7 +248,7 @@ export const BeforeAfter: React.FC<BeforeAfterProps> = (props) => {
       {/* SELL CARD */}
       <Sequence from={endStart} durationInFrames={END_CARD}>
         <AbsoluteFill style={{backgroundColor: props.brandColor, alignItems: 'center', justifyContent: 'center', gap: 30, padding: '0 70px'}}>
-          {props.logoUrl ? <Img src={props.logoUrl} style={{width: 210, height: 210, objectFit: 'contain'}} /> : null}
+          {props.logoUrl ? <BrandLogo src={props.logoUrl} /> : null}
           <div style={{fontFamily, fontSize: 92, color: endInk, textAlign: 'center', lineHeight: 1}}>{props.businessName}</div>
 
           {props.rating ? (

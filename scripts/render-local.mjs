@@ -62,10 +62,19 @@ if (musicArg && !musicPassthrough) {
   }
 }
 
+// --logo is a local file too, so it needs serving rather than a file:// URL.
+const logoArg = arg('logo');
+const logoPath = logoArg && !/^https?:\/\//.test(logoArg) ? path.resolve(logoArg) : null;
+if (logoPath && !fs.existsSync(logoPath)) {
+  console.error(`--logo not found: ${logoPath}`);
+  process.exit(1);
+}
+
 const served = {
   '/before': path.resolve(beforePath),
   '/after': path.resolve(afterPath),
   ...(musicPath ? {'/music': musicPath} : {}),
+  ...(logoPath ? {'/logo': logoPath} : {}),
 };
 const server = http.createServer((req, res) => {
   const file = served[(req.url || '').split('?')[0]];
@@ -84,7 +93,7 @@ const inputProps = {
   businessName: arg('name', 'Your Business'),
   hook: arg('hook', "You won't believe the difference"),
   brandColor: arg('color', '#0EA5E9'),
-  logoUrl: arg('logo', null),
+  logoUrl: logoPath ? `${origin}/logo` : (logoArg || null),
   musicSrc: musicPassthrough ?? (musicPath ? `${origin}/music` : null),
   phone: arg('phone', null),
   handle: arg('handle', null),
@@ -125,7 +134,8 @@ await renderMedia({
   onProgress: ({progress}) => process.stdout.write(`\r  render ${Math.round(progress * 100)}%   `),
 });
 if (imageError) {
-  console.error(`\n\nFAILED: a photo never loaded, so the reel is blank.\n  ${imageError}`);
+  const what = /\/logo\b|logo\./i.test(imageError) ? 'The logo' : 'A photo';
+  console.error(`\n\nFAILED: ${what} never loaded, so the reel is missing it.\n  ${imageError}`);
   process.exit(1);
 }
 
