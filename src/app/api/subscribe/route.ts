@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
     if (!si?.client_secret) throw new Error('No setup intent on subscription');
     return NextResponse.json({
       clientSecret: si.client_secret,
-      publishableKey: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '',
+      publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || '',
       subscriptionId: sub.id,
     });
   } catch (e: any) {
