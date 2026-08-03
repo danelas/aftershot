@@ -79,7 +79,7 @@ function SubscribeInner() {
 
   return (
     <main className="checkout">
-      <a href="/" className="logo">After<span>Shot</span></a>
+      <a href="/" className="logo"><img src="/logo-mark.png" alt="" />After<span>Shot</span></a>
       <div className="checkout-card">
         <h1>Start your free trial</h1>
         {step === 'email' && (

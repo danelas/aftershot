@@ -1,7 +1,7 @@
 export default function Done() {
   return (
     <main className="checkout">
-      <a href="/" className="logo">After<span>Shot</span></a>
+      <a href="/" className="logo"><img src="/logo-mark.png" alt="" />After<span>Shot</span></a>
       <div className="checkout-card" style={{textAlign: 'center'}}>
         <div style={{fontSize: 54}}>🎉</div>
         <h1>Trial started</h1>

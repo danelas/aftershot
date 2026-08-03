@@ -44,7 +44,7 @@ export default function Home() {
       <div className="nav-shell">
         <header className="container">
           <nav className="nav">
-            <a href="/" className="logo">After<span>Shot</span></a>
+            <a href="/" className="logo"><img src="/logo-mark.png" alt="" />After<span>Shot</span></a>
             <div className="nav-links">
               <a href="#how">How it works</a>
               <a href="#studio">Studio</a>

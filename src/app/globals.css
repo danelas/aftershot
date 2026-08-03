@@ -89,7 +89,9 @@ a { color: inherit; }
 .logo {
   font-family: var(--font-d); font-weight: 800; font-size: 21px;
   letter-spacing: -0.5px; text-decoration: none;
+  display: inline-flex; align-items: center; gap: 9px;
 }
+.logo img { width: 27px; height: 27px; border-radius: 7px; display: block; }
 .logo span { color: var(--brand-bright); }
 .nav-links { display: flex; gap: 26px; align-items: center; font-size: 14.5px; }
 .nav-links a { text-decoration: none; color: var(--muted); font-weight: 500; transition: color 0.15s; }

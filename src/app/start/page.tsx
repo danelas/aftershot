@@ -114,7 +114,7 @@ export default function Start() {
   return (
     <main className="onb">
       <div className="onb-inner">
-        <a href="/" className="logo">After<span>Shot</span></a>
+        <a href="/" className="logo"><img src="/logo-mark.png" alt="" />After<span>Shot</span></a>
         <h1>Set up AfterShot</h1>
         <p className="onb-sub">Takes 2 minutes. This is what shows on your reels.</p>
 
