@@ -1,6 +1,7 @@
 import DemoShowcase from './components/DemoShowcase';
 import Reveal from './components/Reveal';
 import SiteNav from './components/SiteNav';
+import {InstagramMark, TikTokMark, YouTubeMark} from './components/BrandIcons';
 import {
   Camera, Wand, Send, Star, Phone, Shield, MapPin, Palette, Music,
   Scissors, Check, Zap, Smartphone, ArrowRight, Play,
@@ -62,11 +63,11 @@ export default function Home() {
             </div>
             <p className="fine">7 days free · no card required · plans from $19/mo</p>
             <div className="posts-to">
-              Posts to
+              <span className="posts-to-label">Posts to</span>
               <span className="pill-row">
-                <span className="p-pill">Instagram Reels</span>
-                <span className="p-pill">TikTok</span>
-                <span className="p-pill">YouTube Shorts</span>
+                <span className="p-pill"><InstagramMark size={15} />Reels</span>
+                <span className="p-pill"><TikTokMark size={15} />TikTok</span>
+                <span className="p-pill"><YouTubeMark size={15} />Shorts</span>
               </span>
             </div>
           </div>
