@@ -91,8 +91,9 @@ export default function Home() {
             <span className="kicker">HOW IT WORKS</span>
             <h2>Two taps per job. That&apos;s the whole workflow.</h2>
             <p className="lead">
-              Built for pressure washers, detailers, and landscapers who&apos;d rather be
-              working than editing video.
+              Built for pressure washers, detailers, landscapers, painters — any trade
+              whose work speaks for itself, run by people who&apos;d rather be working
+              than editing video.
             </p>
           </Reveal>
           <div className="steps">
@@ -279,8 +280,10 @@ export default function Home() {
               <summary>Which trades does this work for?</summary>
               <p>
                 Any work with a dramatic before and after: pressure washing, auto
-                detailing, and landscaping are where we started. If your results
-                speak for themselves in two photos, AfterShot will make them loud.
+                detailing, landscaping, painting, roof &amp; gutter cleaning, epoxy
+                floors, remodeling, junk removal, pool care, carpet &amp; tile,
+                window cleaning — if your results speak for themselves in two
+                photos, AfterShot will make them loud.
               </p>
             </details>
             <details>

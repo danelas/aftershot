@@ -21,6 +21,16 @@ const TRADE_LABELS: Record<string, string> = {
   pressure_washing: 'Pressure washing',
   detailing: 'Auto detailing',
   landscaping: 'Landscaping',
+  painting: 'Painting',
+  roof_cleaning: 'Roof cleaning',
+  epoxy_floors: 'Epoxy floors',
+  remodeling: 'Remodeling',
+  junk_removal: 'Junk removal',
+  cleaning: 'Cleaning',
+  pool_care: 'Pool care',
+  carpet_tile: 'Carpet & tile',
+  window_cleaning: 'Window cleaning',
+  other: 'Local services',
 };
 
 export default function Studio() {
