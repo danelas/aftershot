@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
   const sb = serviceClient();
   const {data: customer} = await sb
     .from('customers')
-    .select('id, business_name, trade, service_area, phone, rating, review_count, price_from, brand_kit, upload_token')
+    .select('id, business_name, trade, service_area, phone, rating, review_count, price_from, brand_kit, logo_url, upload_token')
     .eq('upload_token', token)
     .maybeSingle();
   if (!customer) return NextResponse.json({error: 'not found'}, {status: 404});
@@ -29,7 +29,14 @@ export async function GET(req: NextRequest) {
       rating: customer.rating != null ? Number(customer.rating) : 0,
       reviewCount: customer.review_count ?? 0,
       priceFrom: customer.price_from,
-      brandKit: customer.brand_kit || null,
+      // Fall back to the signup logo when the Studio kit has none of its own.
+      // These were separate fields with no sync, so a logo uploaded at signup
+      // looked like it had never been uploaded once you opened Studio.
+      brandKit: (() => {
+        const kit = {...(customer.brand_kit || {})} as {logoUrl?: string};
+        if (!kit.logoUrl && customer.logo_url) kit.logoUrl = customer.logo_url;
+        return Object.keys(kit).length ? kit : null;
+      })(),
     },
     clips: (jobs || []).map((j) => ({id: j.id, url: j.reel_url, createdAt: j.created_at})),
   });

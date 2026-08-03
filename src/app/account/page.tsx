@@ -11,7 +11,7 @@ type Account = {
   rating: number | null; reviewCount: number | null; linkedToGoogle: boolean;
   planName: string | null; planLabel: string | null; planVideos: string | null;
   onTrial: boolean; status: string; trialEnd: number | null; hasCard: boolean;
-  jobCount: number;
+  jobCount: number; logoUrl: string | null;
 };
 
 export default function AccountPage() {
@@ -119,6 +119,12 @@ function AccountInner() {
         )}
       </div>
 
+      <LogoCard
+        token={token!}
+        logoUrl={acct.logoUrl}
+        onChange={(logoUrl) => setAcct((a) => (a ? {...a, logoUrl} : a))}
+      />
+
       <SocialCard token={token!} />
 
       <div className="acct-card">
@@ -137,6 +143,79 @@ function AccountInner() {
         Forget this device
       </button>
     </Shell>
+  );
+}
+
+// Signup takes a logo but it's optional, and there was no way to add or swap
+// one later — so anyone who skipped it had permanently unbranded reels.
+function LogoCard({
+  token, logoUrl, onChange,
+}: {token: string; logoUrl: string | null; onChange: (u: string | null) => void}) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+
+  async function upload(file: File) {
+    setBusy(true); setErr('');
+    try {
+      const fd = new FormData();
+      fd.append('t', token);
+      fd.append('logo', file);
+      const r = await fetch('/api/account/logo', {method: 'POST', body: fd});
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || 'Could not save that image.');
+      onChange(d.logoUrl);
+    } catch (e: any) {
+      setErr(e?.message || 'Something went wrong.');
+    } finally { setBusy(false); }
+  }
+
+  async function remove() {
+    setBusy(true); setErr('');
+    try {
+      const r = await fetch(`/api/account/logo?t=${encodeURIComponent(token)}`, {method: 'DELETE'});
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || 'Could not remove it.');
+      onChange(null);
+    } catch (e: any) {
+      setErr(e?.message || 'Something went wrong.');
+    } finally { setBusy(false); }
+  }
+
+  return (
+    <div className="acct-card">
+      <p className="acct-label">YOUR LOGO</p>
+      {logoUrl ? (
+        <>
+          <div className="acct-logo-wrap">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={logoUrl} alt="Your logo" className="acct-logo" />
+          </div>
+          <p className="acct-muted" style={{fontSize: 13}}>
+            Shown on every reel&apos;s end card, and available as a watermark in Studio.
+          </p>
+        </>
+      ) : (
+        <p className="acct-muted" style={{marginTop: 0}}>
+          No logo yet — your reels end with just your business name. Add one and
+          it appears on every reel from here on.
+        </p>
+      )}
+
+      <label className="btn checkout-btn" style={{cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1}}>
+        {busy ? 'Saving…' : logoUrl ? 'Replace logo' : 'Upload a logo'}
+        <input
+          type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml"
+          style={{display: 'none'}} disabled={busy}
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f); e.target.value = ''; }}
+        />
+      </label>
+      {logoUrl && (
+        <button className="acct-signout" style={{marginTop: 10}} onClick={remove} disabled={busy}>
+          Remove logo
+        </button>
+      )}
+      {err && <p className="checkout-msg">{err}</p>}
+    </div>
   );
 }
 

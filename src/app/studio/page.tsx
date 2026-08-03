@@ -83,8 +83,17 @@ function StudioInner() {
   }
 
   async function uploadLogo(file: File): Promise<string> {
-    const {url} = await uploadToStorage(file, 'image', token);
-    return url;
+    // Route through the account endpoint so one upload sets BOTH the Studio
+    // watermark and customers.logo_url (the auto-posted reel's end card).
+    // Uploading here used to touch only the Studio kit, so the logo silently
+    // never appeared on the reels that post themselves.
+    const fd = new FormData();
+    fd.append('t', token);
+    fd.append('logo', file);
+    const res = await fetch('/api/account/logo', {method: 'POST', body: fd});
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok || !d.logoUrl) throw new Error(d.error || "Couldn't save that logo.");
+    return d.logoUrl;
   }
 
   // AI Auto-Director (Magic edit) — included with every plan, no credits.
