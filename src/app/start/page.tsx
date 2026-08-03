@@ -42,7 +42,7 @@ export default function Start() {
   const [lookupNote, setLookupNote] = useState('');
   const [manualRating, setManualRating] = useState(false);
   const [state, setState] = useState<'idle' | 'saving' | 'done' | 'error'>('idle');
-  const [result, setResult] = useState<{uploadUrl: string} | null>(null);
+  const [result, setResult] = useState<{uploadUrl: string; emailed?: boolean} | null>(null);
   const [msg, setMsg] = useState('');
 
   const set = (k: string, v: any) => setF((p) => ({...p, [k]: v}));
@@ -126,7 +126,10 @@ export default function Start() {
           </a>
           <p className="onb-fine">
             $0 today. Plans from $19/mo, cancel anytime.
-            <br />(We&apos;ll also email {f.email} the next steps.)
+            <br />
+            {result.emailed
+              ? `We've emailed this link to ${f.email} too.`
+              : 'Save this link now — copy it somewhere safe before you close this page.'}
           </p>
         </div>
       </main>

@@ -1,5 +1,6 @@
 import {NextRequest, NextResponse} from 'next/server';
 import {serviceClient} from '@/lib/supabase';
+import {sendEmail, welcomeEmail} from '@/lib/email';
 
 // POST /api/onboard  (multipart form)
 // Creates a customer from the signup form and returns their upload link.
@@ -62,9 +63,16 @@ export async function POST(req: NextRequest) {
   await sb.from('reminders').upsert({customer_id: customer.id});
 
   const base = process.env.PUBLIC_BASE_URL || new URL(req.url).origin;
+  const uploadUrl = `${base}/u/${customer.upload_token}`;
+
+  // The on-screen link is the only other copy, so this is what saves anyone who
+  // closes the tab. Best-effort: never fail a signup over email.
+  const {ok: emailed} = await sendEmail({to: email, ...welcomeEmail(businessName, uploadUrl)});
+
   return NextResponse.json({
     ok: true,
     uploadToken: customer.upload_token,
-    uploadUrl: `${base}/u/${customer.upload_token}`,
+    uploadUrl,
+    emailed,
   });
 }
