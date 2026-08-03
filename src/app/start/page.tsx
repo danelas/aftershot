@@ -146,7 +146,9 @@ export default function Start() {
         <div className="onb-card">
           <p className="sec-title"><Building2 size={15} /> YOUR BUSINESS</p>
           <div className="onb-row">
-            <input className="onb-input" style={{flex: 1}} placeholder="Business name" value={f.businessName} onChange={(e) => set('businessName', e.target.value)} />
+            {/* basis, not `flex:1` (= 1 1 0%): a zero basis let this collapse to
+                86px on a 320px screen. Below that the button wraps instead. */}
+            <input className="onb-input" style={{flex: '1 1 170px'}} placeholder="Business name" value={f.businessName} onChange={(e) => set('businessName', e.target.value)} />
             <button type="button" className="onb-find" onClick={findBusiness}>{searching ? '…' : 'Find on Google'}</button>
           </div>
           {matches.length > 0 && (
@@ -172,13 +174,13 @@ export default function Start() {
           {manualRating && !f.placeId && (
             <div className="onb-row">
               <input
-                className="onb-input" style={{flex: 1}} inputMode="decimal"
+                className="onb-input" style={{flex: '1 1 130px'}} inputMode="decimal"
                 placeholder="Rating (e.g. 4.9)"
                 value={String(f.rating)}
                 onChange={(e) => set('rating', e.target.value)}
               />
               <input
-                className="onb-input" style={{flex: 1}} inputMode="numeric"
+                className="onb-input" style={{flex: '1 1 130px'}} inputMode="numeric"
                 placeholder="# of reviews (e.g. 127)"
                 value={String(f.reviewCount)}
                 onChange={(e) => set('reviewCount', e.target.value)}

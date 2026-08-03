@@ -109,4 +109,9 @@ const wrap: React.CSSProperties = {maxWidth: 440, margin: '0 auto', padding: 24,
 const picker: React.CSSProperties = {display: 'flex', flexDirection: 'column', gap: 6, border: '2px dashed #cbd5e1', borderRadius: 16, padding: 20, marginBottom: 14, cursor: 'pointer'};
 const input: React.CSSProperties = {padding: 14, borderRadius: 12, border: '1px solid #e2e8f0', margin: '10px 0 20px', fontSize: 16};
 const btn: React.CSSProperties = {background: '#0EA5E9', color: '#fff', border: 0, borderRadius: 14, padding: '16px 20px', fontSize: 18, fontWeight: 700, cursor: 'pointer'};
-const studioLink: React.CSSProperties = {marginTop: 18, textAlign: 'center', color: '#0EA5E9', fontWeight: 700, fontSize: 15, textDecoration: 'none'};
+// display:block + padding so the thumb target clears ~44px — this page lives on
+// a phone home screen and is used one-handed after a job.
+const studioLink: React.CSSProperties = {
+  display: 'block', marginTop: 12, padding: '13px 10px', textAlign: 'center',
+  color: '#0EA5E9', fontWeight: 700, fontSize: 15, textDecoration: 'none',
+};

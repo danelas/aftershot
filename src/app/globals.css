@@ -38,6 +38,11 @@
 * { box-sizing: border-box; }
 
 html { scroll-behavior: smooth; }
+/* Safety net so a stray wide/decorative element can never make the whole page
+   scroll sideways on a phone. `clip` (not `hidden`) keeps sticky/anchor
+   scrolling working. Wide content that legitimately needs to scroll must do it
+   in its own container. */
+html, body { overflow-x: clip; }
 
 body {
   margin: 0;
@@ -215,7 +220,10 @@ a { color: inherit; }
 @keyframes floaty { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
 
 /* ---------- sections ---------- */
-.section { padding: 92px 0; position: relative; }
+/* clip, not hidden: hidden here would make the section a scroll container and
+   break position:sticky descendants. The ambient .glow blobs are wider than a
+   phone, and an unclipped one pushed the page 163px sideways on a 375px screen. */
+.section { padding: 92px 0; position: relative; overflow-x: clip; }
 .section.alt { background: var(--bg-raised); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .kicker {
   display: block; text-align: center; color: var(--brand-bright);
@@ -387,7 +395,17 @@ a { color: inherit; }
   box-shadow: 0 30px 70px -28px rgba(0, 0, 0, 0.7);
 }
 .checkout-card h1 { font-family: var(--font-d); font-size: 24px; letter-spacing: -0.6px; margin: 0 0 20px; font-weight: 700; }
-.plan-picker { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }
+.plan-picker { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 16px; }
+/* Three across squeezes to 66px on a 320px screen — too cramped for the one
+   screen where people actually compare the prices. Stack instead. */
+@media (max-width: 360px) {
+  .plan-picker { grid-template-columns: 1fr; }
+  .plan-opt {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 10px; text-align: left; padding: 12px 14px;
+  }
+  .plan-opt .p-videos { margin-left: auto; }
+}
 .plan-opt {
   border: 1.5px solid var(--line); border-radius: 12px; padding: 11px 6px;
   background: var(--card); cursor: pointer; text-align: center; font-family: inherit;
@@ -439,11 +457,17 @@ a { color: inherit; }
 .onb-input {
   width: 100%; padding: 13px 14px; border-radius: 12px;
   border: 1px solid var(--line-strong); background: var(--card); color: var(--ink);
-  margin-bottom: 10px; font-size: 15.5px; font-family: inherit; box-sizing: border-box;
+  /* Must stay >= 16px: iOS Safari auto-zooms the page on focus for anything
+     smaller, and this is a phone-first form. */
+  margin-bottom: 10px; font-size: 16px; font-family: inherit; box-sizing: border-box;
 }
 .onb-input::placeholder { color: var(--faint); }
 .onb-input:focus { outline: 2px solid rgba(14, 165, 233, 0.5); border-color: transparent; }
-.onb-row { display: flex; gap: 8px; }
+/* wrap rather than crush: on a 320px screen the "Find on Google" button left
+   the name field at 86px, too narrow to type a business name into. */
+.onb-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.onb-row .onb-input { min-width: 0; }
+.onb-row .onb-find { flex: 1 1 auto; }
 .onb-find {
   flex: none; padding: 0 16px; border-radius: 12px; border: 1px solid rgba(14, 165, 233, 0.4);
   background: rgba(14, 165, 233, 0.12); color: var(--brand-bright);
@@ -462,13 +486,22 @@ a { color: inherit; }
 .onb-match .stars { color: var(--brand-bright); }
 .onb-linked { font-size: 13px; color: #34d399; margin: 0 0 12px; font-weight: 600; }
 .onb-note { font-size: 13px; color: var(--muted); line-height: 1.5; margin: 0 0 12px; }
-.trade-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+/* minmax(0,1fr), not 1fr: a bare 1fr track refuses to shrink below the chip's
+   min-content, which blew the grid 18px past its container at 320px and made
+   the two columns different widths. */
+.trade-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .trade-chip {
   display: flex; align-items: center; gap: 8px;
   border: 1.5px solid var(--line); border-radius: 12px; padding: 11px 12px;
   background: var(--card); color: var(--muted); cursor: pointer;
   font-size: 13.5px; font-weight: 600; font-family: inherit; text-align: left;
   transition: border-color 0.15s, background 0.15s, color 0.15s;
+  min-width: 0; /* let the label wrap instead of widening the grid track */
+  overflow-wrap: anywhere; /* "Landscaping" alone is wider than a 320px column */
+}
+/* On the narrowest phones, buy the labels room before they have to break. */
+@media (max-width: 360px) {
+  .trade-chip { padding: 11px 9px; gap: 6px; font-size: 12.5px; }
 }
 .trade-chip:hover { border-color: var(--line-strong); color: var(--ink); }
 .trade-chip.sel {
