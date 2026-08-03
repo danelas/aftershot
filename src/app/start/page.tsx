@@ -4,6 +4,7 @@
 // Places picker auto-fills the real rating + review count. Styled to match the
 // dark landing page; trade is a chip grid covering every transformation trade.
 import {useState} from 'react';
+import {saveToken} from '@/lib/session';
 import {
   Building2, Palette as PaletteIcon, Droplets, Car, Leaf, Paintbrush, Home as HomeIcon,
   Layers, Hammer, Trash2, Sparkles, Waves, LayoutGrid, Sun, MoreHorizontal,
@@ -42,7 +43,7 @@ export default function Start() {
   const [lookupNote, setLookupNote] = useState('');
   const [manualRating, setManualRating] = useState(false);
   const [state, setState] = useState<'idle' | 'saving' | 'done' | 'error'>('idle');
-  const [result, setResult] = useState<{uploadUrl: string; emailed?: boolean} | null>(null);
+  const [result, setResult] = useState<{uploadUrl: string; uploadToken?: string; emailed?: boolean} | null>(null);
   const [msg, setMsg] = useState('');
 
   const set = (k: string, v: any) => setF((p) => ({...p, [k]: v}));
@@ -99,6 +100,9 @@ export default function Start() {
       const r = await fetch('/api/onboard', {method: 'POST', body: fd});
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || 'failed');
+      // Remember the token so the nav and /account work from here on — this is
+      // the only "session" AfterShot has.
+      if (d.uploadToken) saveToken(d.uploadToken, f.businessName);
       setResult(d); setState('done');
     } catch (e: any) { setMsg(e?.message || 'Something went wrong'); setState('error'); }
   }
@@ -114,16 +118,19 @@ export default function Start() {
             Home Screen</b> — after every job, tap it and drop a before + after. That&apos;s the whole routine.
           </p>
           <div className="onb-link-card">{result.uploadUrl}</div>
-          <button className="btn checkout-btn" onClick={() => navigator.clipboard?.writeText(result.uploadUrl)}>
-            Copy link
-          </button>
           <a
-            href={`/subscribe?email=${encodeURIComponent(f.email)}${planParam()}`}
+            href={`/subscribe?email=${encodeURIComponent(f.email)}${planParam()}${result.uploadToken ? `&t=${result.uploadToken}` : ''}`}
             className="btn checkout-btn"
-            style={{marginTop: 12, textDecoration: 'none'}}
+            style={{textDecoration: 'none'}}
           >
             Start your 7-day free trial →
           </a>
+          <button
+            className="acct-copy"
+            onClick={() => navigator.clipboard?.writeText(result.uploadUrl)}
+          >
+            Copy link
+          </button>
           <p className="onb-fine">
             No card required. Plans from $19/mo only if you continue.
             <br />

@@ -1,5 +1,6 @@
 import DemoShowcase from './components/DemoShowcase';
 import Reveal from './components/Reveal';
+import SiteNav from './components/SiteNav';
 import {
   Camera, Wand, Send, Star, Phone, Shield, MapPin, Palette, Music,
   Scissors, Check, Zap, Smartphone, ArrowRight, Play,
@@ -41,19 +42,7 @@ const TIERS = [
 export default function Home() {
   return (
     <>
-      <div className="nav-shell">
-        <header className="container">
-          <nav className="nav">
-            <a href="/" className="logo"><img src="/logo-mark.png" alt="" />After<span>Shot</span></a>
-            <div className="nav-links">
-              <a href="#how">How it works</a>
-              <a href="#studio">Studio</a>
-              <a href="#pricing">Pricing</a>
-              <a href="/start" className="btn btn-sm">Start free trial</a>
-            </div>
-          </nav>
-        </header>
-      </div>
+      <SiteNav />
 
       <div className="hero-wrap">
         <span className="glow glow-hero" />

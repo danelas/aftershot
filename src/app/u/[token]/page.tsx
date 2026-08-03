@@ -2,12 +2,15 @@
 
 // The whole friction-killer: one screen, two photos, done. Owners add this to
 // their home screen (PWA) so it's a one-tap icon. No editor, no account, no app.
-import {useState} from 'react';
+import {useEffect, useState} from 'react';
 import {anonClient} from '@/lib/supabase';
 import {use} from 'react';
+import {saveToken} from '@/lib/session';
 
 export default function UploadPage({params}: {params: Promise<{token: string}>}) {
   const {token} = use(params);
+  // Opening the emailed link on a new device is how you "sign in" here.
+  useEffect(() => { if (token) saveToken(token); }, [token]);
   const [before, setBefore] = useState<File | null>(null);
   const [after, setAfter] = useState<File | null>(null);
   const [hook, setHook] = useState('');

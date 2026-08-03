@@ -101,12 +101,19 @@ a { color: inherit; }
 .nav-links { display: flex; gap: 26px; align-items: center; font-size: 14.5px; }
 .nav-links a { text-decoration: none; color: var(--muted); font-weight: 500; transition: color 0.15s; }
 .nav-links a:hover { color: var(--ink); }
+/* `.nav-links a` (0,1,1) outranks `.btn` (0,1,0), so the nav CTA was rendering
+   muted grey on a bright fill — near-illegible. Restate it at equal weight. */
+.nav-links a.btn,
+.nav-links a.btn:hover { color: #04283a; font-weight: 700; }
 
 /* ---------- buttons ---------- */
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  background: linear-gradient(135deg, #38bdf8, #0284c7);
-  color: #fff; padding: 15px 28px; border-radius: 14px; font-weight: 700;
+  /* White on the old #38bdf8 end measured 2.14:1 — WCAG AA wants 4.5:1, so
+     every CTA on the site was hard to read. Dark ink on the bright gradient
+     is 7.2-9.2:1 and, against a near-black page, reads brighter not duller. */
+  background: linear-gradient(135deg, #7dd3fc, #38bdf8);
+  color: #04283a; padding: 15px 28px; border-radius: 14px; font-weight: 700;
   font-family: var(--font-b);
   text-decoration: none; font-size: 16.5px; border: 0; cursor: pointer;
   transition: transform 0.16s, box-shadow 0.16s, filter 0.16s;
@@ -426,6 +433,37 @@ a { color: inherit; }
 .checkout-input::placeholder { color: var(--faint); }
 .checkout-input:focus { outline: 2px solid rgba(14, 165, 233, 0.5); border-color: transparent; }
 .checkout-btn { width: 100%; margin-top: 14px; }
+
+/* ---------- account dashboard ---------- */
+.acct-wrap { text-align: left; }
+.acct-wrap h1 { font-size: 24px; }
+.acct-muted { color: var(--muted); line-height: 1.6; font-size: 14.5px; }
+.acct-card {
+  margin-top: 18px; padding: 16px; border-radius: 14px;
+  border: 1px solid var(--line); background: rgba(255, 255, 255, 0.025);
+}
+.acct-label {
+  font-size: 11.5px; font-weight: 800; letter-spacing: 0.09em;
+  color: var(--faint); margin: 0 0 10px;
+}
+.acct-row {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 14px;
+  padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 14.5px;
+}
+.acct-row:last-of-type { border-bottom: 0; }
+.acct-row span { color: var(--muted); flex: none; }
+.acct-row b { color: var(--ink); text-align: right; }
+.acct-copy {
+  width: 100%; margin-top: 10px; padding: 12px; border-radius: 12px;
+  border: 1px solid var(--line-strong); background: transparent; color: var(--ink);
+  font-family: inherit; font-size: 14.5px; font-weight: 600; cursor: pointer;
+}
+.acct-copy:hover { background: rgba(255, 255, 255, 0.05); }
+.acct-signout {
+  display: block; margin: 22px auto 0; padding: 10px 16px; border: 0;
+  background: transparent; color: var(--faint); font-family: inherit;
+  font-size: 13.5px; cursor: pointer; text-decoration: underline;
+}
 .checkout-msg {
   color: #fca5a5; font-size: 14px; line-height: 1.5; margin: 14px 0 0;
   padding: 11px 13px; border-radius: 10px;

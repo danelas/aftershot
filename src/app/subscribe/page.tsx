@@ -3,9 +3,10 @@
 // Card-free trial: plan → email → done. Nothing to collect, so there is no
 // Stripe.js on this page at all — which also removes the blocked-third-party-
 // script failure mode that made the old card step look like a crash.
-import {Suspense, useState} from 'react';
+import {Suspense, useEffect, useState} from 'react';
 import {useRouter, useSearchParams} from 'next/navigation';
 import {Lock} from '../components/Icons';
+import {loadToken, saveToken} from '@/lib/session';
 
 const PLANS = [
   {id: 'starter', name: 'Starter', price: 19, videos: '6 reels/mo'},
@@ -32,6 +33,12 @@ function SubscribeInner() {
   const [msg, setMsg] = useState('');
   const sel = PLANS.find((p) => p.id === plan)!;
 
+  // Arriving from /start with ?t= — remember it so the nav and /account work.
+  useEffect(() => {
+    const t = params.get('t');
+    if (t) saveToken(t);
+  }, [params]);
+
   async function begin() {
     if (!email.includes('@')) { setMsg('Enter your email to start.'); return; }
     setBusy(true); setMsg('');
@@ -47,7 +54,11 @@ function SubscribeInner() {
         setMsg('You already have an active plan — you’re all set.');
         return;
       }
-      router.push('/subscribe/done');
+      // Land them where the product actually is. Dumping someone on the
+      // marketing homepage right after signing up wastes the one moment they
+      // are most ready to post their first job.
+      const t = params.get('t') || loadToken();
+      router.push(t ? `/subscribe/done?t=${encodeURIComponent(t)}` : '/subscribe/done');
     } catch (e: any) {
       console.error('trial start failed', e);
       setMsg(e?.message || 'Something went wrong. Please try again.');
