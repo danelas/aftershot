@@ -43,7 +43,9 @@ export default function Start() {
   const [lookupNote, setLookupNote] = useState('');
   const [manualRating, setManualRating] = useState(false);
   const [state, setState] = useState<'idle' | 'saving' | 'done' | 'error'>('idle');
-  const [result, setResult] = useState<{uploadUrl: string; uploadToken?: string; emailed?: boolean} | null>(null);
+  const [result, setResult] = useState<{
+    uploadUrl?: string; uploadToken?: string; emailed?: boolean; existing?: boolean;
+  } | null>(null);
   const [msg, setMsg] = useState('');
 
   const set = (k: string, v: any) => setF((p) => ({...p, [k]: v}));
@@ -107,7 +109,36 @@ export default function Start() {
     } catch (e: any) { setMsg(e?.message || 'Something went wrong'); setState('error'); }
   }
 
-  if (state === 'done' && result) {
+  // They already had an account under this email. We never put the link on
+  // screen in that case (see /api/onboard) — it only goes to the inbox that owns
+  // it, so this can't be used to walk into someone else's account.
+  if (state === 'done' && result?.existing) {
+    return (
+      <main className="onb">
+        <div className="onb-inner onb-done">
+          <div className="big">📬</div>
+          <h1>You already have an account</h1>
+          <p className="onb-sub">
+            {result.emailed
+              ? <>We&apos;ve emailed your link to <b style={{color: 'var(--ink)'}}>{f.email}</b>. Open it on your
+                phone and you&apos;re straight back in — nothing on your account changed.</>
+              : <>There&apos;s already an AfterShot account on <b style={{color: 'var(--ink)'}}>{f.email}</b>, but we
+                couldn&apos;t send the email just now. Reply to your original welcome email, or
+                write to hello@theaftershot.com and we&apos;ll get you back in.</>}
+          </p>
+          <a href="/account" className="btn checkout-btn" style={{textDecoration: 'none'}}>
+            Open my account
+          </a>
+          <button className="acct-copy" onClick={() => { setState('idle'); setResult(null); }}>
+            Use a different email
+          </button>
+        </div>
+      </main>
+    );
+  }
+
+  if (state === 'done' && result?.uploadUrl) {
+    const uploadUrl = result.uploadUrl;
     return (
       <main className="onb">
         <div className="onb-inner onb-done">
@@ -127,7 +158,7 @@ export default function Start() {
           </a>
           <button
             className="acct-copy"
-            onClick={() => navigator.clipboard?.writeText(result.uploadUrl)}
+            onClick={() => navigator.clipboard?.writeText(uploadUrl)}
           >
             Copy link
           </button>

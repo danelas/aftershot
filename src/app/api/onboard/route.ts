@@ -1,6 +1,6 @@
 import {NextRequest, NextResponse} from 'next/server';
-import {serviceClient} from '@/lib/supabase';
-import {sendEmail, welcomeEmail} from '@/lib/email';
+import {serviceClient, findCustomerByEmail} from '@/lib/supabase';
+import {sendEmail, welcomeEmail, recoveryEmail} from '@/lib/email';
 
 // POST /api/onboard  (multipart form)
 // Creates a customer from the signup form and returns their upload link.
@@ -22,6 +22,24 @@ export async function POST(req: NextRequest) {
     const n = Number(str(k));
     return Number.isFinite(n) && n > 0 ? n : null;
   };
+
+  // Re-running /start is what people actually do when they've lost their link,
+  // and a plain insert gave them a second account with a second token — the
+  // first one's jobs, plan and connected socials silently orphaned. Treat it as
+  // recovery instead: mail the existing link and change nothing.
+  //
+  // Deliberately does NOT return the token or the business name in the response.
+  // Typing a stranger's email would otherwise hand you their account, since the
+  // token is the only credential there is.
+  const existing = await findCustomerByEmail(email);
+  if (existing) {
+    const base = process.env.PUBLIC_BASE_URL || new URL(req.url).origin;
+    const {ok} = await sendEmail({
+      to: existing.email,
+      ...recoveryEmail(existing.business_name, `${base}/account?t=${existing.upload_token}`),
+    });
+    return NextResponse.json({ok: true, existing: true, emailed: ok});
+  }
 
   const sb = serviceClient();
   const {data: customer, error} = await sb

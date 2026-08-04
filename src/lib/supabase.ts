@@ -19,3 +19,20 @@ export function serviceClient() {
     {auth: {persistSession: false}},
   );
 }
+
+// Email is how someone gets back to an account they've lost the link to, so the
+// lookup has to survive them capitalising it differently the second time.
+// `in` rather than `ilike` on purpose: emails legitimately contain `_`, which
+// ilike would treat as a wildcard and match the wrong account.
+export async function findCustomerByEmail(email: string) {
+  const e = email.trim();
+  if (!e) return null;
+  const {data} = await serviceClient()
+    .from('customers')
+    .select('id, business_name, email, upload_token')
+    .in('email', Array.from(new Set([e, e.toLowerCase()])))
+    .order('created_at', {ascending: true})
+    .limit(1)
+    .maybeSingle();
+  return data as {id: string; business_name: string; email: string; upload_token: string} | null;
+}

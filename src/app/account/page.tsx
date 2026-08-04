@@ -58,7 +58,10 @@ function AccountInner() {
           AfterShot doesn&apos;t use passwords — your upload link is your account.
           Open the link we emailed you and you&apos;ll land right back here.
         </p>
-        <a href="/start" className="btn checkout-btn" style={{textDecoration: 'none'}}>Set up AfterShot</a>
+        <RecoverCard />
+        <a href="/start" className="btn btn-ghost checkout-btn" style={{textDecoration: 'none'}}>
+          I&apos;m new — set up AfterShot
+        </a>
       </Shell>
     );
   }
@@ -144,6 +147,65 @@ function AccountInner() {
         Forget this device
       </button>
     </Shell>
+  );
+}
+
+// The password-reset box for an app with no passwords. New phone, cleared
+// browser, deleted welcome email — before this, all three ended at "email
+// support", which for a $19/mo trade business means they just don't come back.
+function RecoverCard() {
+  const [email, setEmail] = useState('');
+  const [state, setState] = useState<'idle' | 'sending' | 'sent'>('idle');
+  const [err, setErr] = useState('');
+
+  async function send() {
+    if (!email.includes('@')) { setErr('Enter the email you signed up with.'); return; }
+    setState('sending'); setErr('');
+    try {
+      const r = await fetch('/api/account/recover', {
+        method: 'POST',
+        headers: {'content-type': 'application/json'},
+        body: JSON.stringify({email}),
+      });
+      if (!r.ok) throw new Error('failed');
+      setState('sent');
+    } catch {
+      setErr('Couldn’t send that just now. Try again, or email hello@theaftershot.com.');
+      setState('idle');
+    }
+  }
+
+  if (state === 'sent') {
+    return (
+      <div className="acct-card">
+        <p className="acct-label">CHECK YOUR EMAIL</p>
+        <p className="acct-muted" style={{margin: 0}}>
+          If <b style={{color: 'var(--ink)'}}>{email}</b> has an AfterShot account, your link is on
+          its way. Open it on this device and you&apos;re signed back in.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="acct-card">
+      <p className="acct-label">LOST YOUR LINK?</p>
+      <p className="acct-muted" style={{marginTop: 0}}>
+        Enter the email you signed up with and we&apos;ll send it again.
+      </p>
+      <input
+        className="checkout-input"
+        type="email"
+        placeholder="you@business.com"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        onKeyDown={(e) => e.key === 'Enter' && send()}
+      />
+      <button className="btn checkout-btn" onClick={send} disabled={state === 'sending'}>
+        {state === 'sending' ? 'Sending…' : 'Email me my link'}
+      </button>
+      {err && <p className="checkout-msg">{err}</p>}
+    </div>
   );
 }
 

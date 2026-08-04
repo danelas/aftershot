@@ -85,6 +85,32 @@ export function welcomeEmail(businessName: string, uploadUrl: string) {
   };
 }
 
+// Sent when someone asks for their link back — from /account on a new device, or
+// from re-running /start with an email that already has an account. There are no
+// passwords, so this email IS the sign-in.
+export function recoveryEmail(businessName: string, uploadUrl: string) {
+  return {
+    subject: 'Your AfterShot link',
+    text:
+      `Here's your upload link, ${businessName}:\n${uploadUrl}\n\n` +
+      `Open it on the phone you want to post from and add it to your home screen. ` +
+      `AfterShot has no passwords — this link is your account.\n\n— AfterShot`,
+    html: shell(
+      `Here's your link back.`,
+      `<p style="margin:0 0 16px;color:#9fb0c7;line-height:1.65;font-size:15px">
+         This is the account for <b style="color:#e6edf7">${escapeHtml(businessName)}</b>.
+         Open it on the phone you post from and <b style="color:#e6edf7">Add to Home
+         Screen</b>. AfterShot has no passwords — this link is your account.
+       </p>
+       <p style="margin:0;padding:13px 15px;background:#070b12;border:1px solid #1e2a3a;border-radius:10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13.5px;color:#38bdf8;word-break:break-all">${escapeHtml(uploadUrl)}</p>
+       <p style="margin:18px 0 0;color:#6b7d94;font-size:13px;line-height:1.6">
+         Didn't ask for this? Ignore it — nothing changed on your account.
+       </p>`,
+      {href: uploadUrl, label: 'Open my account'},
+    ),
+  };
+}
+
 // Sent from the Stripe webhook once the card is on file and the trial is live.
 export function trialStartedEmail(planName: string, amountLabel: string, uploadUrl: string | null) {
   return {
