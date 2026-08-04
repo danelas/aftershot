@@ -40,15 +40,40 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Still handled: someone adding a card later to continue past the trial.
-  // Deduped against the Stripe customer's metadata, so it won't double-send.
+  // Someone adding a card later to continue past the trial (via /api/billing/card).
   if (event.type === 'setup_intent.succeeded') {
     const si = event.data.object as Stripe.SetupIntent;
     const cid = typeof si.customer === 'string' ? si.customer : si.customer?.id;
-    if (cid) await announceTrial(cid).catch((e) => console.error('trial email skipped:', e?.message));
+    if (cid) {
+      // Do this first: a card that isn't the subscription's default payment
+      // method is a card that still lets the trial cancel itself at day 7.
+      await attachCard(si, cid).catch((e) => console.error('card attach failed:', e?.message));
+      // Deduped against the Stripe customer's metadata, so it won't double-send.
+      await announceTrial(cid).catch((e) => console.error('trial email skipped:', e?.message));
+    }
   }
 
   return NextResponse.json({received: true});
+}
+
+// Make the just-saved card the one Stripe actually bills: default on the
+// customer (for future invoices) and on the live subscription (which is set to
+// cancel at trial end while no payment method is attached).
+async function attachCard(si: Stripe.SetupIntent, customerId: string) {
+  const pm = typeof si.payment_method === 'string' ? si.payment_method : si.payment_method?.id;
+  if (!pm) return;
+  const s = stripe();
+
+  await s.customers.update(customerId, {invoice_settings: {default_payment_method: pm}});
+
+  // The subscription we started the setup from; fall back to whatever is live
+  // in case the card was added through some other route.
+  let subId = si.metadata?.subscription_id || null;
+  if (!subId) {
+    const subs = await s.subscriptions.list({customer: customerId, status: 'all', limit: 10});
+    subId = subs.data.find((x) => ['trialing', 'active', 'past_due'].includes(x.status))?.id ?? null;
+  }
+  if (subId) await s.subscriptions.update(subId, {default_payment_method: pm});
 }
 
 // Send the "your trial is live" email once per customer.

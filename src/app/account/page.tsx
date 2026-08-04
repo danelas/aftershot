@@ -24,7 +24,11 @@ export default function AccountPage() {
 }
 
 function AccountInner() {
-  const qsToken = useSearchParams().get('t');
+  const params = useSearchParams();
+  const qsToken = params.get('t');
+  // Set by Stripe's success_url. The webhook that records the card may not have
+  // landed yet, so this is what tells them it worked — not acct.hasCard.
+  const cardAdded = params.get('card') === 'added';
   const [token, setToken] = useState<string | null>(null);
   const [acct, setAcct] = useState<Account | null>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'none' | 'error'>('loading');
@@ -114,13 +118,7 @@ function AccountInner() {
           <b>{acct.onTrial ? (trialDays != null ? `Free trial — ${trialDays} day${trialDays === 1 ? '' : 's'} left` : 'Free trial') : acct.status}</b>
         </div>
         <div className="acct-row"><span>Card on file</span><b>{acct.hasCard ? 'Yes' : 'No'}</b></div>
-        {!acct.hasCard && (
-          <p className="acct-muted" style={{fontSize: 13, marginBottom: 0}}>
-            No card, so nothing can bill you. When you want to keep going past the
-            trial, email <a href="mailto:hello@theaftershot.com" style={{color: 'var(--brand-bright)'}}>hello@theaftershot.com</a> and
-            we&apos;ll send a secure link to add one.
-          </p>
-        )}
+        {!acct.hasCard && <CardCard token={token!} justAdded={cardAdded} />}
       </div>
 
       <LogoCard
@@ -147,6 +145,69 @@ function AccountInner() {
         Forget this device
       </button>
     </Shell>
+  );
+}
+
+// Keeping going past the trial used to mean emailing support and waiting for a
+// link — a manual step in the exact moment someone has decided to pay. This is
+// a Stripe Checkout session in setup mode: it saves a card and charges nothing.
+function CardCard({token, justAdded}: {token: string; justAdded: boolean}) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const [needsPlan, setNeedsPlan] = useState(false);
+
+  if (justAdded) {
+    return (
+      <p className="acct-muted" style={{fontSize: 13, marginBottom: 0}}>
+        ✓ Card saved — it can take a moment to show above. Your plan now continues
+        automatically when the trial ends.
+      </p>
+    );
+  }
+
+  async function add() {
+    setBusy(true); setErr('');
+    try {
+      const r = await fetch('/api/billing/card', {
+        method: 'POST',
+        headers: {'content-type': 'application/json'},
+        body: JSON.stringify({t: token}),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || 'Could not open the card form.');
+      // No plan behind the card yet — pick one first, that flow starts the trial.
+      if (d.needsPlan) { setNeedsPlan(true); setBusy(false); return; }
+      window.location.href = d.url;
+    } catch (e: any) {
+      setErr(e?.message || 'Something went wrong.');
+      setBusy(false);
+    }
+  }
+
+  if (needsPlan) {
+    return (
+      <>
+        <p className="acct-muted" style={{fontSize: 13}}>
+          You don&apos;t have a plan running yet — choose one and your 7 free days start there.
+        </p>
+        <a href={`/subscribe?t=${encodeURIComponent(token)}`} className="btn checkout-btn" style={{textDecoration: 'none'}}>
+          Choose a plan
+        </a>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <p className="acct-muted" style={{fontSize: 13}}>
+        No card, so nothing can bill you — and when the trial ends, it just stops.
+        Add one to keep your reels going. You&apos;re not charged until the trial is over.
+      </p>
+      <button className="btn checkout-btn" onClick={add} disabled={busy}>
+        {busy ? 'Opening…' : 'Add a card'}
+      </button>
+      {err && <p className="checkout-msg">{err}</p>}
+    </>
   );
 }
 
