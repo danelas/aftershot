@@ -1,11 +1,19 @@
 name: render-worker
 
-# Renders queued before/after reels every ~10 minutes. A cheap pre-check hits
-# the Supabase REST API first so quiet runs skip the npm install entirely.
+# Renders queued before/after reels. A cheap pre-check hits the Supabase REST
+# API first so quiet runs skip the npm install entirely.
+#
+# */5 is GitHub's documented minimum for scheduled workflows — going lower does
+# nothing. Note GitHub also delays schedules under load, sometimes by several
+# minutes, so treat 5 min as a floor and not a guarantee. For a genuinely fast
+# create-then-review loop, /api/jobs should fire a repository_dispatch on this
+# workflow so a new job renders immediately instead of waiting for the tick.
 on:
   schedule:
-    - cron: "*/10 * * * *"
+    - cron: "*/5 * * * *"
   workflow_dispatch: {}
+  repository_dispatch:
+    types: [render-now]
 
 concurrency:
   group: render-worker

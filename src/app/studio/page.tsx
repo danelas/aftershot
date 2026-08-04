@@ -12,7 +12,14 @@ import {uploadToStorage} from '@/lib/upload';
 import type {AutoDirectResult, BrandKit} from '@/lib/studio';
 import type {CaptionSegment} from '@/lib/captions';
 
-type Clip = {id: string; url: string; createdAt: string};
+type Clip = {
+  id: string;
+  url: string;
+  createdAt: string;
+  // 'rendering' and 'failed' have no url yet and render as placeholders.
+  state: 'ready' | 'rendering' | 'failed';
+  error?: string | null;
+};
 type Customer = {
   businessName: string; trade: string; serviceArea: string | null; phone: string | null;
   rating: number; reviewCount: number; priceFrom: string | null; brandKit: BrandKit | null;
@@ -48,15 +55,37 @@ function StudioInner() {
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [clips, setClips] = useState<Clip[]>([]);
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
-  const [open, setOpen] = useState<number | null>(null);
+  // Keyed by clip id, not array index: polling can prepend a new clip while
+  // the editor is open, and an index would then point at a different reel.
+  const [openId, setOpenId] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token) { setState('error'); return; }
-    fetch(`/api/studio/clips?t=${encodeURIComponent(token)}`)
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((d) => { setCustomer(d.customer); setClips(d.clips); setState('ready'); })
-      .catch(() => setState('error'));
+    let stop = false;
+    let timer: ReturnType<typeof setTimeout>;
+
+    const load = async () => {
+      try {
+        const r = await fetch(`/api/studio/clips?t=${encodeURIComponent(token)}`);
+        if (!r.ok) throw new Error();
+        const d = await r.json();
+        if (stop) return;
+        setCustomer(d.customer);
+        setClips(d.clips);
+        setState('ready');
+        // Keep checking only while something is still rendering, so the
+        // placeholder turns into the real reel without a manual refresh.
+        if (d.clips.some((c: Clip) => c.state === 'rendering')) {
+          timer = setTimeout(load, 15000);
+        }
+      } catch {
+        if (!stop) setState('error');
+      }
+    };
+
+    load();
+    return () => { stop = true; clearTimeout(timer); };
   }, [token]);
 
   async function saveToChannel(file: File, jobId: string) {
@@ -155,6 +184,8 @@ function StudioInner() {
   }
 
   const priceMin = customer.priceFrom ? Number(customer.priceFrom.replace(/[^0-9.]/g, '')) || null : null;
+  // Resolved by id so a poll that reorders the list can't swap what's open.
+  const openClip = openId ? clips.find((c) => c.id === openId && c.state === 'ready') ?? null : null;
 
   return (
     <main className="min-h-dvh bg-ink-950 px-5 py-8 text-mist-100">
@@ -179,29 +210,61 @@ function StudioInner() {
           </div>
         ) : (
           <div className="mt-6 grid grid-cols-3 gap-3 sm:grid-cols-4">
-            {clips.map((c, i) => (
-              <button key={c.id} type="button" onClick={() => setOpen(i)} className="group text-left">
-                <span className="relative block aspect-[9/16] overflow-hidden rounded-xl bg-black ring-2 ring-transparent transition group-hover:ring-accent-500">
-                  {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-                  <video src={`${c.url}#t=0.1`} muted playsInline preload="metadata" className="h-full w-full object-cover" />
-                  <span className="absolute inset-0 flex items-center justify-center opacity-0 transition group-hover:opacity-100">
-                    <span className="rounded-full bg-accent-500 px-3 py-1.5 text-[11px] font-bold text-white">Edit</span>
+            {clips.map((c, i) => {
+              // A queued job has no video to play yet — show its state instead
+              // of hiding it, so a just-created reel doesn't look like it failed.
+              if (c.state !== 'ready') {
+                const failed = c.state === 'failed';
+                return (
+                  <div key={c.id} className="text-left">
+                    <span
+                      className={`relative flex aspect-[9/16] flex-col items-center justify-center gap-2 rounded-xl border border-dashed p-2 text-center ${
+                        failed ? 'border-red-500/40 bg-red-500/5' : 'border-white/15 bg-ink-900'
+                      }`}
+                    >
+                      {failed ? (
+                        <>
+                          <span className="text-lg">⚠️</span>
+                          <span className="text-[11px] font-semibold text-red-300">Didn&apos;t render</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/20 border-t-accent-400" />
+                          <span className="text-[11px] font-semibold text-mist-300">Rendering…</span>
+                          <span className="text-[10px] text-mist-400">a few minutes</span>
+                        </>
+                      )}
+                    </span>
+                    <span className="mt-1 block text-[11px] text-mist-400">
+                      {new Date(c.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                );
+              }
+              return (
+                <button key={c.id} type="button" onClick={() => setOpenId(c.id)} className="group text-left">
+                  <span className="relative block aspect-[9/16] overflow-hidden rounded-xl bg-black ring-2 ring-transparent transition group-hover:ring-accent-500">
+                    {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                    <video src={`${c.url}#t=0.1`} muted playsInline preload="metadata" className="h-full w-full object-cover" />
+                    <span className="absolute inset-0 flex items-center justify-center opacity-0 transition group-hover:opacity-100">
+                      <span className="rounded-full bg-accent-500 px-3 py-1.5 text-[11px] font-bold text-white">Edit</span>
+                    </span>
                   </span>
-                </span>
-                <span className="mt-1 block text-[11px] text-mist-400">
-                  {new Date(c.createdAt).toLocaleDateString()}
-                </span>
-              </button>
-            ))}
+                  <span className="mt-1 block text-[11px] text-mist-400">
+                    {new Date(c.createdAt).toLocaleDateString()}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         )}
 
         {note && <p className="mt-4 text-sm font-medium text-accent-300">{note}</p>}
       </div>
 
-      {open !== null && clips[open] && (
+      {openClip && (
         <VideoStudio
-          clipUrl={clips[open].url}
+          clipUrl={openClip.url}
           slug={token}
           name={customer.businessName}
           category={TRADE_LABELS[customer.trade] || customer.trade}
@@ -216,10 +279,10 @@ function StudioInner() {
           onAutoDirect={autoDirect}
           onSaveBrand={saveBrand}
           onUploadLogo={uploadLogo}
-          onSaveToChannel={(file) => saveToChannel(file, clips[open].id)}
+          onSaveToChannel={(file) => saveToChannel(file, openClip.id)}
           reviews={[]}
-          onClose={() => setOpen(null)}
-          onShare={(file) => { setOpen(null); deliver(file); }}
+          onClose={() => setOpenId(null)}
+          onShare={(file) => { setOpenId(null); deliver(file); }}
         />
       )}
     </main>

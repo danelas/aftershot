@@ -13,11 +13,13 @@ export async function GET(req: NextRequest) {
     .eq('upload_token', token)
     .maybeSingle();
   if (!customer) return NextResponse.json({error: 'not found'}, {status: 404});
+  // Include jobs that have no reel yet. Filtering them out made a just-created
+  // reel simply absent from Studio, which reads as "it didn't work" rather than
+  // "it's still rendering".
   const {data: jobs} = await sb
     .from('jobs')
-    .select('id, created_at, reel_url, status')
+    .select('id, created_at, reel_url, status, error')
     .eq('customer_id', customer.id)
-    .not('reel_url', 'is', null)
     .order('created_at', {ascending: false})
     .limit(30);
   return NextResponse.json({
@@ -38,6 +40,14 @@ export async function GET(req: NextRequest) {
         return Object.keys(kit).length ? kit : null;
       })(),
     },
-    clips: (jobs || []).map((j) => ({id: j.id, url: j.reel_url, createdAt: j.created_at})),
+    clips: (jobs || []).map((j) => ({
+      id: j.id,
+      url: j.reel_url,
+      createdAt: j.created_at,
+      // 'ready' | 'rendering' | 'failed' — Studio shows a placeholder for the
+      // two that have no video to play.
+      state: j.reel_url ? 'ready' : j.status === 'failed' ? 'failed' : 'rendering',
+      error: j.reel_url ? null : j.error || null,
+    })),
   });
 }
