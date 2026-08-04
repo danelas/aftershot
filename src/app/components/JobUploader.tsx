@@ -9,7 +9,7 @@
 import {useEffect, useRef, useState} from 'react';
 import {anonClient} from '@/lib/supabase';
 import SideBySideSplitter from './SideBySideSplitter';
-import {PLATFORM_META, PLATFORM_LABEL, ALL_PLATFORMS, connectHref} from './PlatformBrand';
+import {PLATFORM_META, PLATFORM_LABEL, ALL_PLATFORMS, connectHref, tileStyle} from './PlatformBrand';
 
 const MAX_EXTRAS = 3;
 
@@ -422,7 +422,7 @@ function ReelResult({
 
               if (!linked.has(p)) {
                 return (
-                  <a key={p} className="soc-tile" style={{background: solid}} href={connectHref(p, token)}>
+                  <a key={p} className="soc-tile" style={tileStyle(meta)} href={connectHref(p, token)}>
                     <span className="soc-ic"><Icon /></span>
                     {label}
                   </a>

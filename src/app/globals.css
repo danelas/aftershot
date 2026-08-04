@@ -501,9 +501,15 @@ a { color: inherit; }
   padding: 11px 12px; border-radius: 12px;
   font-size: 13px; font-weight: 700; line-height: 1;
 }
+/* No border: the fill IS the edge. A translucent white border sat on top of the
+   fill and showed up as a pale hairline wherever the fill went dark — the right
+   end of the Instagram gradient. Tiles that need separation carry an inset ring
+   from PlatformBrand instead. */
 .soc-tile {
   justify-content: center; color: #fff; text-decoration: none;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  /* +1px each side stands in for the border the chips still have, so a tile and
+     a chip sitting side by side in the grid are the same size. */
+  border: 0; padding: 12px 13px;
   transition: filter 0.15s, transform 0.15s;
 }
 .soc-tile:hover { filter: brightness(1.12); transform: translateY(-1px); }

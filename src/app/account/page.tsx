@@ -6,7 +6,7 @@ import {Suspense, useCallback, useEffect, useState} from 'react';
 import {useSearchParams} from 'next/navigation';
 import {loadToken, saveToken, clearToken} from '@/lib/session';
 import JobUploader from '../components/JobUploader';
-import {PLATFORM_META, PLATFORM_LABEL, ALL_PLATFORMS, connectHref} from '../components/PlatformBrand';
+import {PLATFORM_META, PLATFORM_LABEL, ALL_PLATFORMS, connectHref, tileStyle} from '../components/PlatformBrand';
 
 type Account = {
   businessName: string; email: string; uploadUrl: string; studioUrl: string;
@@ -543,7 +543,7 @@ function SocialCard({token}: {token: string}) {
                 <a
                   key={p}
                   className="soc-tile"
-                  style={{background: solid}}
+                  style={tileStyle(meta)}
                   href={connectHref(p, token)}
                 >
                   <span className="soc-ic"><Icon /></span>

@@ -9,6 +9,10 @@ type Brand = {
   solid: string; // brand-filled tile — "connect this"
   tint: string; // linked chip — a subtle brand wash
   ink: string; // brand icon colour on our own dark surface
+  // Only for a fill too dark to separate from our own dark card (TikTok).
+  // Bright fills need no outline, and giving them one puts a pale hairline
+  // along whichever edge the fill happens to be darkest.
+  ring?: string;
 };
 
 function InstagramIcon() {
@@ -51,7 +55,14 @@ export const PLATFORM_META: Record<string, Brand> = {
     tint: 'rgba(238,42,123,0.12)',
     ink: '#F472A6',
   },
-  tiktok: {label: 'TikTok', Icon: TikTokIcon, solid: '#0f0f11', tint: 'rgba(37,244,238,0.10)', ink: '#25F4EE'},
+  tiktok: {
+    label: 'TikTok',
+    Icon: TikTokIcon,
+    solid: '#0f0f11',
+    tint: 'rgba(37,244,238,0.10)',
+    ink: '#25F4EE',
+    ring: 'rgba(255,255,255,0.22)',
+  },
   youtube: {label: 'YouTube', Icon: YouTubeIcon, solid: '#FF0000', tint: 'rgba(255,0,0,0.12)', ink: '#FF5252'},
   facebook: {label: 'Facebook', Icon: FacebookIcon, solid: '#1877F2', tint: 'rgba(24,119,242,0.12)', ink: '#4E9BFF'},
 };
@@ -61,6 +72,14 @@ export const PLATFORM_LABEL: Record<string, string> = Object.fromEntries(
 );
 
 export const ALL_PLATFORMS = ['instagram', 'tiktok', 'youtube', 'facebook'];
+
+// The inline half of a connect tile. An inset ring, not a border: a border sits
+// outside the fill and paints over it, which is what put a pale line down the
+// dark end of the Instagram gradient.
+export const tileStyle = (meta: Brand): React.CSSProperties => ({
+  background: meta.solid,
+  ...(meta.ring ? {boxShadow: `inset 0 0 0 1px ${meta.ring}`} : {}),
+});
 
 export const connectHref = (platform: string, token: string) =>
   `/api/social/connect?platform=${platform}&t=${encodeURIComponent(token)}`;
