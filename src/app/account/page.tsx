@@ -2,7 +2,7 @@
 
 // Owner dashboard. Finds the account from ?t=<token> (so the emailed link works
 // on any device) or from this browser's remembered token.
-import {Suspense, useEffect, useState} from 'react';
+import {Suspense, useCallback, useEffect, useState} from 'react';
 import {useSearchParams} from 'next/navigation';
 import {loadToken, saveToken, clearToken} from '@/lib/session';
 import JobUploader from '../components/JobUploader';
@@ -85,7 +85,14 @@ function AccountInner() {
 
   return (
     <Shell>
-      <h1 style={{marginBottom: 4}}>{acct.businessName}</h1>
+      <BusinessName
+        token={token!}
+        name={acct.businessName}
+        onSaved={(businessName) => {
+          setAcct((a) => (a ? {...a, businessName} : a));
+          saveToken(token!, businessName);
+        }}
+      />
       <p className="acct-muted" style={{marginTop: 0}}>{acct.email}</p>
 
       {/* The thing people came here to do goes first. */}
@@ -343,54 +350,213 @@ function LogoCard({
   );
 }
 
-const PLATFORM_LABEL: Record<string, string> = {
-  instagram: 'Instagram',
-  tiktok: 'TikTok',
-  youtube: 'YouTube',
+// The name is stamped on every reel's end card, so a signup typo rides along on
+// every video. Editing it in place beats emailing support about it.
+function BusinessName({
+  token, name, onSaved,
+}: {token: string; name: string; onSaved: (name: string) => void}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(name);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+
+  async function save() {
+    const next = draft.trim();
+    if (!next || next === name) { setEditing(false); return; }
+    setBusy(true); setErr('');
+    try {
+      const r = await fetch(`/api/account?t=${encodeURIComponent(token)}`, {
+        method: 'PATCH',
+        headers: {'content-type': 'application/json'},
+        body: JSON.stringify({businessName: next}),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || 'Could not save that name.');
+      onSaved(d.businessName);
+      setEditing(false);
+    } catch (e: any) {
+      setErr(e?.message || 'Could not save that name.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!editing) {
+    return (
+      <h1 style={{marginBottom: 4, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap'}}>
+        {name}
+        <button
+          type="button"
+          className="name-edit"
+          onClick={() => { setDraft(name); setErr(''); setEditing(true); }}
+        >
+          Edit
+        </button>
+      </h1>
+    );
+  }
+
+  return (
+    <div style={{marginBottom: 4}}>
+      <input
+        className="onb-input"
+        value={draft}
+        maxLength={60}
+        autoFocus
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') save();
+          if (e.key === 'Escape') setEditing(false);
+        }}
+      />
+      <div style={{display: 'flex', gap: 8, marginTop: 8}}>
+        <button type="button" className="acct-copy" style={{marginTop: 0}} onClick={save} disabled={busy}>
+          {busy ? 'Saving…' : 'Save name'}
+        </button>
+        <button
+          type="button"
+          className="acct-copy"
+          style={{marginTop: 0}}
+          onClick={() => setEditing(false)}
+          disabled={busy}
+        >
+          Cancel
+        </button>
+      </div>
+      <p className="acct-muted" style={{fontSize: 12.5, marginBottom: 0}}>
+        {err ? <span style={{color: '#f87171'}}>{err}</span> : 'This is the name on every reel’s end card.'}
+      </p>
+    </div>
+  );
+}
+
+// Each platform wears its own colours: a solid brand tile to link it, a tinted
+// chip once it's linked. Scannable at a glance on our dark surface.
+function InstagramIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
+      strokeLinecap="round" strokeLinejoin="round" width={17} height={17} aria-hidden>
+      <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37Z" />
+      <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+    </svg>
+  );
+}
+function TikTokIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" width={17} height={17} aria-hidden>
+      <path d="M16.6 5.8a4.3 4.3 0 0 1-1-2.8h-3.2v12.9a2.3 2.3 0 1 1-2.3-2.3c.24 0 .47.04.7.1V8.4a5.6 5.6 0 0 0-.7-.05 5.5 5.5 0 1 0 5.5 5.5V8.3a7.4 7.4 0 0 0 4.3 1.37V6.44a4.3 4.3 0 0 1-3.3-.64Z" />
+    </svg>
+  );
+}
+function YouTubeIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" width={17} height={17} aria-hidden>
+      <path d="M23.5 6.9a3 3 0 0 0-2.1-2.1C19.5 4.3 12 4.3 12 4.3s-7.5 0-9.4.5A3 3 0 0 0 .5 6.9C0 8.8 0 12 0 12s0 3.2.5 5.1a3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1c.5-1.9.5-5.1.5-5.1s0-3.2-.5-5.1ZM9.6 15.6V8.4l6.2 3.6-6.2 3.6Z" />
+    </svg>
+  );
+}
+function FacebookIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" width={17} height={17} aria-hidden>
+      <path d="M22 12a10 10 0 1 0-11.6 9.9v-7H7.9V12h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.5h-1.3c-1.2 0-1.6.8-1.6 1.6V12h2.8l-.4 2.9h-2.4v7A10 10 0 0 0 22 12Z" />
+    </svg>
+  );
+}
+
+type Brand = {label: string; Icon: () => React.ReactElement; solid: string; tint: string; ink: string};
+
+const PLATFORM_META: Record<string, Brand> = {
+  instagram: {
+    label: 'Instagram',
+    Icon: InstagramIcon,
+    solid: 'linear-gradient(115deg,#F9CE34 0%,#EE2A7B 50%,#6228D7 100%)',
+    tint: 'rgba(238,42,123,0.12)',
+    ink: '#F472A6',
+  },
+  tiktok: {label: 'TikTok', Icon: TikTokIcon, solid: '#0f0f11', tint: 'rgba(37,244,238,0.10)', ink: '#25F4EE'},
+  youtube: {label: 'YouTube', Icon: YouTubeIcon, solid: '#FF0000', tint: 'rgba(255,0,0,0.12)', ink: '#FF5252'},
+  facebook: {label: 'Facebook', Icon: FacebookIcon, solid: '#1877F2', tint: 'rgba(24,119,242,0.12)', ink: '#4E9BFF'},
 };
+
+const PLATFORM_LABEL: Record<string, string> = Object.fromEntries(
+  Object.entries(PLATFORM_META).map(([k, v]) => [k, v.label]),
+);
 
 type Social = {
   configured: boolean;
   unavailable?: boolean;
   platforms: string[];
+  facebookPages?: {id: string; name: string}[];
   accounts: {platform: string; handle: string | null; displayName: string | null; reauthRequired: boolean}[];
 };
 
-// Where a customer links their own IG/TikTok/YouTube. We never see their
-// platform credentials — upload-post hosts the OAuth and we just send them to it.
+// Where a customer links their own Instagram / TikTok / YouTube / Facebook. We
+// never see their platform credentials — upload-post owns the OAuth apps and we
+// only send them to the right authorize screen.
 function SocialCard({token}: {token: string}) {
   const [social, setSocial] = useState<Social | null>(null);
+  const [note, setNote] = useState<{kind: 'ok' | 'bad'; text: string} | null>(null);
   const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState('');
 
-  useEffect(() => {
-    if (!token) return;
+  const load = useCallback(() => {
     fetch(`/api/social/status?t=${encodeURIComponent(token)}`)
       .then((r) => r.json())
       .then(setSocial)
       .catch(() => setSocial({configured: true, unavailable: true, platforms: [], accounts: []}));
   }, [token]);
 
-  async function connect() {
-    setBusy(true); setErr('');
-    try {
-      const r = await fetch('/api/social/connect', {
-        method: 'POST',
-        headers: {'content-type': 'application/json'},
-        body: JSON.stringify({t: token}),
+  useEffect(() => {
+    if (!token) return;
+    load();
+  }, [token, load]);
+
+  // The ?connect_status= the OAuth round-trip lands back with. Read it once,
+  // then strip it so a later reload can't resurface a stale note.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get('connect_status');
+    if (!status) return;
+    const platform = params.get('platform');
+    const url = new URL(window.location.href);
+    url.searchParams.delete('connect_status');
+    url.searchParams.delete('platform');
+    window.history.replaceState({}, '', url.toString());
+
+    if (status === 'success') {
+      setNote({kind: 'ok', text: `${PLATFORM_LABEL[platform || ''] || 'Account'} connected.`});
+    } else if (status === 'limit') {
+      setNote({
+        kind: 'bad',
+        text: 'We’ve hit our posting provider’s account limit. Email hello@theaftershot.com and we’ll raise it — usually within the hour.',
       });
-      const d = await r.json().catch(() => ({}));
-      if (!r.ok || !d.url) throw new Error(d.error || 'Could not start the connection.');
-      window.location.href = d.url; // upload-post's hosted linking page
-    } catch (e: any) {
-      setErr(e?.message || 'Something went wrong.');
+    } else if (status !== 'unconfigured') {
+      setNote({kind: 'bad', text: 'Couldn’t connect that account — please try again.'});
+    }
+  }, []);
+
+  async function disconnect() {
+    if (!confirm('This unlinks every connected account. Continue?')) return;
+    setBusy(true);
+    setNote(null);
+    try {
+      const r = await fetch(`/api/social/status?t=${encodeURIComponent(token)}`, {method: 'DELETE'});
+      if (!r.ok) throw new Error();
+      setNote({kind: 'ok', text: 'Disconnected. We no longer have access to your accounts.'});
+      load();
+    } catch {
+      setNote({kind: 'bad', text: 'Couldn’t disconnect. Try again.'});
+    } finally {
       setBusy(false);
     }
   }
 
   const linked = new Map((social?.accounts ?? []).map((a) => [a.platform, a]));
-  const platforms = social?.platforms?.length ? social.platforms : ['instagram', 'tiktok', 'youtube'];
+  const platforms = social?.platforms?.length
+    ? social.platforms
+    : ['instagram', 'tiktok', 'youtube', 'facebook'];
   const anyLinked = linked.size > 0;
+  const fbPages = social?.facebookPages ?? [];
 
   return (
     <div className="acct-card">
@@ -405,33 +571,72 @@ function SocialCard({token}: {token: string}) {
         </p>
       ) : (
         <>
-          {platforms.map((p) => {
-            const a = linked.get(p);
-            return (
-              <div className="acct-row" key={p}>
-                <span>{PLATFORM_LABEL[p] ?? p}</span>
-                <b style={{color: a ? '#34d399' : 'var(--faint)'}}>
-                  {a
-                    ? `✓ ${a.handle || a.displayName || 'Connected'}${a.reauthRequired ? ' — needs reconnecting' : ''}`
-                    : 'Not connected'}
-                </b>
-              </div>
-            );
-          })}
+          <div className="soc-grid">
+            {platforms.map((p) => {
+              const meta = PLATFORM_META[p];
+              if (!meta) return null;
+              const a = linked.get(p);
+              const {label, Icon, solid, tint, ink} = meta;
+              return a ? (
+                <span key={p} className="soc-chip" style={{background: tint, borderColor: ink}}>
+                  <span className="soc-ic" style={{color: ink}}><Icon /></span>
+                  <span className="soc-name">{a.handle ? `@${a.handle}` : a.displayName || label}</span>
+                  {a.reauthRequired ? (
+                    <a className="soc-redo" href={`/api/social/connect?platform=${p}&t=${encodeURIComponent(token)}`}>
+                      Reconnect
+                    </a>
+                  ) : (
+                    <span className="soc-tick" aria-label="connected">✓</span>
+                  )}
+                </span>
+              ) : (
+                <a
+                  key={p}
+                  className="soc-tile"
+                  style={{background: solid}}
+                  href={`/api/social/connect?platform=${p}&t=${encodeURIComponent(token)}`}
+                >
+                  <span className="soc-ic"><Icon /></span>
+                  {label}
+                </a>
+              );
+            })}
+          </div>
+
           {social.unavailable && (
-            <p className="acct-muted" style={{fontSize: 13}}>
+            <p className="acct-muted" style={{fontSize: 13, marginBottom: 0}}>
               Couldn&apos;t reach the posting service just now — this list may be out of date.
             </p>
           )}
+
           <p className="acct-muted" style={{fontSize: 13, marginBottom: 0}}>
             {anyLinked
               ? 'Reels post automatically to the accounts above after every job.'
-              : 'Connect an account and we’ll post your reels there automatically after every job.'}
+              : 'Tap a platform to link it once, and we’ll post your reels there automatically after every job. Instagram needs a Professional account (Business or Creator) — free to switch in the app under Settings → Account type.'}
           </p>
-          <button className="btn checkout-btn" onClick={connect} disabled={busy}>
-            {busy ? 'Opening…' : anyLinked ? 'Manage connected accounts' : 'Connect my accounts'}
-          </button>
-          {err && <p className="checkout-msg">{err}</p>}
+
+          {/* A personal Facebook account with no Page can't receive a Reel. */}
+          {linked.has('facebook') && fbPages.length === 0 && (
+            <p className="acct-muted" style={{fontSize: 13, marginBottom: 0}}>
+              Facebook reels go to a <b>Page</b>, and none is linked to your account yet. Create a Page
+              for your business, then reconnect Facebook.
+            </p>
+          )}
+
+          {anyLinked && (
+            <p className="acct-muted" style={{fontSize: 12.5, marginBottom: 0}}>
+              <button type="button" className="soc-unlink" onClick={disconnect} disabled={busy}>
+                Disconnect
+              </button>{' '}
+              unlinks every connected account at once.
+            </p>
+          )}
+
+          {note && (
+            <p style={{fontSize: 13, marginBottom: 0, color: note.kind === 'ok' ? '#34d399' : '#f87171'}}>
+              {note.text}
+            </p>
+          )}
         </>
       )}
     </div>

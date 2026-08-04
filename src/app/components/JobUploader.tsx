@@ -16,9 +16,50 @@ const PLATFORM_LABEL: Record<string, string> = {
   instagram: 'Instagram',
   tiktok: 'TikTok',
   youtube: 'YouTube',
+  facebook: 'Facebook',
 };
 
 type Slot = {file: File; url: string};
+
+// A blank caption box is where people stall — so offer three lines to tap
+// instead of a cursor to stare at. Whatever they've already typed is sent along
+// as a steer, so this refines a half-written idea rather than overwriting it.
+function HookHelper({
+  draft, token, onPick,
+}: {draft: string; token: string; onPick: (v: string) => void}) {
+  const [ideas, setIdeas] = useState<string[]>([]);
+  const [busy, setBusy] = useState(false);
+
+  async function suggest() {
+    setBusy(true);
+    try {
+      const r = await fetch('/api/hooks', {
+        method: 'POST',
+        headers: {'content-type': 'application/json'},
+        body: JSON.stringify({t: token, draft}),
+      });
+      const d = await r.json().catch(() => ({}));
+      setIdeas(Array.isArray(d.hooks) ? d.hooks : []);
+    } catch {
+      setIdeas([]);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="hook-ai">
+      <button type="button" className="hook-ai-btn" onClick={suggest} disabled={busy}>
+        {busy ? 'Thinking…' : ideas.length ? '✨ More ideas' : '✨ Write one for me'}
+      </button>
+      {ideas.map((h) => (
+        <button key={h} type="button" className="hook-ai-pick" onClick={() => onPick(h)}>
+          {h}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export default function JobUploader({token, studioUrl}: {token: string; studioUrl: string}) {
   const [before, setBefore] = useState<Slot | null>(null);
@@ -163,6 +204,7 @@ export default function JobUploader({token, studioUrl}: {token: string; studioUr
         value={hook}
         onChange={(e) => setHook(e.target.value)}
       />
+      <HookHelper draft={hook} token={token} onPick={setHook} />
 
       {/* Also reachable from the splitter, but plenty of people upload two
           shots their phone app already stamped. */}
@@ -219,7 +261,10 @@ function ReelResult({
 }: {token: string; jobId: string | null; studioUrl: string; onAnother: () => void}) {
   const [job, setJob] = useState<JobStatus | null>(null);
   const [accounts, setAccounts] = useState<{platform: string; handle: string | null}[] | null>(null);
-  const [platforms, setPlatforms] = useState<string[]>(['instagram', 'tiktok', 'youtube']);
+  const [platforms, setPlatforms] = useState<string[]>(['instagram', 'tiktok', 'youtube', 'facebook']);
+  // Facebook reels land on a Page. One page needs no question; several do.
+  const [fbPages, setFbPages] = useState<{id: string; name: string}[]>([]);
+  const [fbPageId, setFbPageId] = useState('');
   const [picked, setPicked] = useState<string[]>([]);
   const [sharing, setSharing] = useState(false);
   const [sent, setSent] = useState<string[]>([]);
@@ -255,6 +300,9 @@ function ReelResult({
       .then((d) => {
         setAccounts(d.accounts ?? []);
         if (d.platforms?.length) setPlatforms(d.platforms);
+        const pages = Array.isArray(d.facebookPages) ? d.facebookPages : [];
+        setFbPages(pages);
+        setFbPageId(pages[0]?.id || '');
         // Pre-select everything they've connected — the common case is "post it
         // everywhere", and an empty selection would need an extra tap first.
         setPicked((d.accounts ?? []).map((a: {platform: string}) => a.platform));
@@ -269,7 +317,12 @@ function ReelResult({
       const r = await fetch('/api/share', {
         method: 'POST',
         headers: {'content-type': 'application/json'},
-        body: JSON.stringify({t: token, jobId, platforms: picked}),
+        body: JSON.stringify({
+          t: token,
+          jobId,
+          platforms: picked,
+          facebookPageId: picked.includes('facebook') ? fbPageId || undefined : undefined,
+        }),
       });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(d.error || 'Could not share that reel.');
@@ -368,6 +421,22 @@ function ReelResult({
               );
             })}
           </div>
+
+          {picked.includes('facebook') && fbPages.length > 1 && (
+            <label className="acct-muted" style={{fontSize: 13, display: 'block'}}>
+              Which Facebook Page
+              <select
+                className="checkout-input"
+                value={fbPageId}
+                onChange={(e) => setFbPageId(e.target.value)}
+                style={{marginTop: 6}}
+              >
+                {fbPages.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name || p.id}</option>
+                ))}
+              </select>
+            </label>
+          )}
 
           {linked.size === 0 && (
             <p className="acct-muted" style={{fontSize: 13}}>

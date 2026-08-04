@@ -9,7 +9,7 @@ import {renderMedia, selectComposition} from '@remotion/renderer';
 import {readFile} from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
-import {postReel, buildCaption} from './poster.mjs';
+import {postReel, buildCaption, connectedPlatforms} from './poster.mjs';
 
 // Safety gate: posting publishes to real accounts. Off by default so live
 // render tests never post. Flip AUTOPOST=1 only when you mean to publish.
@@ -104,7 +104,16 @@ async function renderJob(job) {
 // Publish the rendered reel to the customer's connected accounts.
 async function postJob(job, localPath) {
   const c = job.customers;
-  const platforms = c.platforms?.length ? c.platforms : ['instagram', 'tiktok', 'youtube'];
+  const wanted = c.platforms?.length ? c.platforms : ['instagram', 'tiktok', 'youtube', 'facebook'];
+  // A platform they asked for but never linked would fail the whole upload, so
+  // only the intersection goes out.
+  const linked = await connectedPlatforms(c.upload_post_profile);
+  const platforms = wanted.filter((p) => linked.includes(p));
+  if (!platforms.length) {
+    console.log(`[post] job ${job.id} → no connected accounts, skipping`);
+    await sb.from('jobs').update({status: 'done'}).eq('id', job.id);
+    return;
+  }
   const caption = buildCaption({
     businessName: c.business_name,
     city: c.city,

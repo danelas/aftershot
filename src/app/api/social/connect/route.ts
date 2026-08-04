@@ -1,30 +1,35 @@
 import {NextRequest, NextResponse} from 'next/server';
 import {serviceClient} from '@/lib/supabase';
-import {ensureProfile, createConnectUrl, uploadPostConfigured} from '@/lib/uploadPost';
+import {
+  ensureProfile,
+  startConnect,
+  uploadPostConfigured,
+  isSocialPlatform,
+  ProfileLimitError,
+} from '@/lib/uploadPost';
 
-// POST /api/social/connect  { t: <upload_token> }
-// Mints the hosted upload-post linking URL for this customer, creating their
-// profile on first use. Returns { url } for the browser to navigate to.
-export async function POST(req: NextRequest) {
-  if (!uploadPostConfigured()) {
-    return NextResponse.json(
-      {error: 'Social posting isn’t switched on yet. Email hello@theaftershot.com and we’ll connect your accounts by hand.'},
-      {status: 503},
-    );
-  }
+// GET /api/social/connect?platform=instagram&t=<upload_token>
+// Sends the owner to upload-post's OAuth screen for ONE platform and lands them
+// back on /account. A plain link (not fetch + redirect) so the browser carries
+// them through the handshake without us proxying any platform credentials.
+export async function GET(req: NextRequest) {
+  const q = req.nextUrl.searchParams;
+  const token = (q.get('t') || '').trim();
+  const platform = (q.get('platform') || '').trim();
+  const base = process.env.PUBLIC_BASE_URL || new URL(req.url).origin;
+  const back = (status: string, extra = '') =>
+    NextResponse.redirect(`${base}/account?connect_status=${status}${extra}`, {status: 303});
 
-  const body = await req.json().catch(() => null);
-  const token = (body?.t || '').toString().trim();
-  if (!token) return NextResponse.json({error: 'missing token'}, {status: 400});
+  if (!token || !isSocialPlatform(platform)) return back('error');
+  if (!uploadPostConfigured()) return back('unconfigured');
 
   const sb = serviceClient();
-  const {data: c, error} = await sb
+  const {data: c} = await sb
     .from('customers')
-    .select('id, business_name, logo_url, upload_token, upload_post_profile')
+    .select('id, upload_token, upload_post_profile')
     .eq('upload_token', token)
     .maybeSingle();
-  if (error) return NextResponse.json({error: error.message}, {status: 500});
-  if (!c) return NextResponse.json({error: 'not found'}, {status: 404});
+  if (!c) return back('error');
 
   // The upload token doubles as the upload-post username: unique, stable, and
   // not personally identifying.
@@ -35,17 +40,15 @@ export async function POST(req: NextRequest) {
     if (c.upload_post_profile !== username) {
       await sb.from('customers').update({upload_post_profile: username}).eq('id', c.id);
     }
-
-    const base = process.env.PUBLIC_BASE_URL || new URL(req.url).origin;
-    const url = await createConnectUrl({
+    const url = await startConnect({
+      platform,
       username,
-      redirectUrl: `${base}/account?connected=1`,
-      businessName: c.business_name,
-      logoUrl: c.logo_url,
+      redirectUrl: `${base}/account?connect_status=success&platform=${platform}`,
     });
-    return NextResponse.json({url});
+    return NextResponse.redirect(url, {status: 303});
   } catch (e: any) {
-    console.error('social connect failed', {token, message: e?.message});
-    return NextResponse.json({error: 'Could not start the connection. Please try again.'}, {status: 502});
+    console.error('social connect failed', {token, platform, message: e?.message});
+    if (e instanceof ProfileLimitError) return back('limit');
+    return back('error');
   }
 }

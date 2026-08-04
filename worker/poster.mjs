@@ -39,9 +39,27 @@ async function pollStatus(requestId) {
   return {pending: true, last};
 }
 
+// Which platforms this profile has actually linked. The customer's `platforms`
+// column says where they WANT reels to go; this says where they CAN go. Posting
+// to an unlinked platform just fails the whole request, so the two are
+// intersected before every job.
+export async function connectedPlatforms(profile) {
+  if (!profile) return [];
+  const resp = await fetch(`${API_BASE}/uploadposts/users/${encodeURIComponent(profile)}`, {
+    headers: authHeader(),
+  });
+  if (!resp.ok) return [];
+  let body;
+  try { body = JSON.parse(await resp.text()); } catch { return []; }
+  const accounts = body?.profile?.social_accounts ?? {};
+  return Object.entries(accounts)
+    .filter(([, raw]) => (typeof raw === 'string' ? raw.trim() : Boolean(raw)))
+    .map(([platform]) => platform);
+}
+
 // profile: the customer's upload-post profile name. platforms: e.g.
-// ['instagram','tiktok','youtube']. Returns the upload-post response body.
-export async function postReel({mediaPath, title, caption, platforms, profile}) {
+// ['instagram','tiktok','youtube','facebook']. Returns the upload-post body.
+export async function postReel({mediaPath, title, caption, platforms, profile, facebookPageId}) {
   if (!platforms?.length) throw new Error('No platforms to post to.');
   if (!profile) throw new Error('No upload-post profile for this customer.');
 
@@ -57,9 +75,13 @@ export async function postReel({mediaPath, title, caption, platforms, profile}) 
   if (platforms.includes('tiktok')) {
     form.append('privacy_level', process.env.TIKTOK_PRIVACY_LEVEL || 'PUBLIC_TO_EVERYONE');
   }
-  if (platforms.includes('facebook') && process.env.FACEBOOK_PAGE_ID) {
-    form.append('facebook_page_id', process.env.FACEBOOK_PAGE_ID.trim());
+  if (platforms.includes('facebook')) {
     form.append('facebook_media_type', 'REELS');
+    form.append('facebook_description', caption);
+    // The customer's own Page. Left out when they have exactly one — upload-post
+    // resolves it — and never guessed from an env var, which would post our
+    // customers' reels to whatever Page that happened to name.
+    if (facebookPageId) form.append('facebook_page_id', String(facebookPageId).trim());
   }
 
   const resp = await fetch(`${API_BASE}/upload`, {method: 'POST', headers: authHeader(), body: form});

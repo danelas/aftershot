@@ -35,7 +35,7 @@ create table if not exists customers (
   -- upload-post.com profile handle for this customer's connected accounts.
   upload_post_profile text,
   -- Which platforms to publish to (defaults to the ones that matter for trades).
-  platforms text[] not null default '{instagram,tiktok,youtube}'
+  platforms text[] not null default '{instagram,tiktok,youtube,facebook}'
 );
 
 -- A single before/after submission.

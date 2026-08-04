@@ -7,9 +7,11 @@
 // can then publish as them via worker/poster.mjs.
 //
 // Contract from https://docs.upload-post.com/openapi.json:
-//   POST /uploadposts/users              {username}            -> {profile}
-//   GET  /uploadposts/users/{username}                         -> {profile}
-//   POST /uploadposts/users/generate-jwt {username, ...brand}  -> {access_url}
+//   POST /uploadposts/users                 {username}              -> {profile}
+//   GET  /uploadposts/users/{username}                              -> {profile}
+//   POST /uploadposts/oauth/{platform}/start {profile, redirect_url} -> {authorize_url}
+//   GET  /uploadposts/facebook/pages?profile=…                      -> {pages}
+//   DELETE /uploadposts/users               {username}
 // Auth on all of them: `Authorization: Apikey <KEY>`.
 
 const API_BASE = 'https://api.upload-post.com/api';
@@ -18,8 +20,30 @@ const KEY = () => process.env.UPLOAD_POST_API_KEY?.trim() || '';
 export const uploadPostConfigured = () => Boolean(KEY());
 
 // Platforms AfterShot publishes to. Keep in sync with customers.platforms.
-export const SOCIAL_PLATFORMS = ['instagram', 'tiktok', 'youtube'] as const;
+export const SOCIAL_PLATFORMS = ['instagram', 'tiktok', 'youtube', 'facebook'] as const;
 export type SocialPlatform = (typeof SOCIAL_PLATFORMS)[number];
+
+export const PLATFORM_LABEL: Record<SocialPlatform, string> = {
+  instagram: 'Instagram',
+  tiktok: 'TikTok',
+  youtube: 'YouTube',
+  facebook: 'Facebook',
+};
+
+export const isSocialPlatform = (v: unknown): v is SocialPlatform =>
+  typeof v === 'string' && (SOCIAL_PLATFORMS as readonly string[]).includes(v);
+
+// upload-post caps profiles by plan tier. Hitting that ceiling looks like a
+// generic 403, but it is the one failure the owner can actually fix — so it
+// gets its own type all the way out to the UI instead of "try again".
+export class ProfileLimitError extends Error {
+  readonly limit: number;
+  constructor(limit: number) {
+    super(`upload-post plan allows ${limit} connected profiles and they are all in use.`);
+    this.name = 'ProfileLimitError';
+    this.limit = limit;
+  }
+}
 
 export type ConnectedAccount = {
   platform: string;
@@ -59,9 +83,69 @@ export async function ensureProfile(username: string): Promise<void> {
   const existing = await call(`/uploadposts/users/${encodeURIComponent(username)}`, {headers: headers()});
   if (existing.ok) return;
 
+  // The profile really is new and the plan has no room for it.
+  if (created.body?.error_code === 'PROFILE_LIMIT_REACHED') {
+    throw new ProfileLimitError(Number(created.body?.profile_limit) || 0);
+  }
+
   throw new Error(
     `upload-post create profile failed (${created.status}): ${JSON.stringify(created.body).slice(0, 300)}`,
   );
+}
+
+// Start the OAuth handshake for a single platform. Returns the URL to send the
+// owner to; they come back to redirectUrl with ?connected=<platform>.
+//
+// One button per platform rather than one hosted page for all of them: the
+// owner sees exactly which accounts are linked and links the rest in place.
+export async function startConnect(opts: {
+  platform: SocialPlatform;
+  username: string;
+  redirectUrl: string;
+}): Promise<string> {
+  const res = await call(`/uploadposts/oauth/${opts.platform}/start`, {
+    method: 'POST',
+    headers: headers(true),
+    body: JSON.stringify({profile: opts.username, redirect_url: opts.redirectUrl}),
+  });
+  const url = res.body?.authorize_url;
+  if (!res.ok || typeof url !== 'string' || !url) {
+    throw new Error(
+      `upload-post oauth start failed (${res.status}): ${JSON.stringify(res.body).slice(0, 300)}`,
+    );
+  }
+  return url;
+}
+
+export type FacebookPage = {id: string; name: string};
+
+// Facebook publishes to a Page, not to the person, and the page list lives
+// behind its own endpoint rather than in social_accounts. upload-post picks the
+// page itself when there is exactly one; several means the owner has to choose.
+export async function getFacebookPages(username: string): Promise<FacebookPage[]> {
+  const res = await call(`/uploadposts/facebook/pages?profile=${encodeURIComponent(username)}`, {
+    headers: headers(),
+  });
+  if (!res.ok) return [];
+  const pages = Array.isArray(res.body?.pages) ? res.body.pages : [];
+  return pages
+    .map((p: any) => ({id: String(p?.id ?? ''), name: String(p?.name ?? '')}))
+    .filter((p: FacebookPage) => p.id);
+}
+
+// upload-post exposes no per-platform unlink — only profile deletion. So
+// "disconnect" drops the profile and recreates it empty, unlinking everything
+// at once. The UI says so plainly rather than implying it's per-account.
+export async function disconnectAll(username: string): Promise<void> {
+  const res = await call('/uploadposts/users', {
+    method: 'DELETE',
+    headers: headers(true),
+    body: JSON.stringify({username}),
+  });
+  if (!res.ok && res.status !== 404) {
+    throw new Error(`upload-post delete profile failed (${res.status})`);
+  }
+  await ensureProfile(username);
 }
 
 // Which of their socials are actually linked right now.
@@ -106,6 +190,7 @@ export async function publishReel(opts: {
   videoUrl: string;
   title: string;
   caption: string;
+  facebookPageId?: string | null;
 }): Promise<{requestId: string | null; body: any}> {
   if (!opts.platforms.length) throw new Error('No platforms selected.');
 
@@ -124,6 +209,12 @@ export async function publishReel(opts: {
   if (opts.platforms.includes('tiktok')) {
     form.append('privacy_level', process.env.TIKTOK_PRIVACY_LEVEL || 'PUBLIC_TO_EVERYONE');
   }
+  if (opts.platforms.includes('facebook')) {
+    form.append('facebook_media_type', 'REELS');
+    if (opts.caption) form.append('facebook_description', opts.caption);
+    // Omitted when the owner has a single Page — upload-post auto-detects it.
+    if (opts.facebookPageId) form.append('facebook_page_id', opts.facebookPageId);
+  }
 
   const res = await fetch(`${API_BASE}/upload`, {method: 'POST', headers: headers(), body: form});
   const text = await res.text();
@@ -132,35 +223,4 @@ export async function publishReel(opts: {
   try { body = text ? JSON.parse(text) : null; } catch { body = text; }
   const requestId = body && typeof body === 'object' && typeof body.request_id === 'string' ? body.request_id : null;
   return {requestId, body};
-}
-
-// The hosted, branded page where they actually link accounts. Valid ~48h.
-export async function createConnectUrl(opts: {
-  username: string;
-  redirectUrl: string;
-  businessName?: string | null;
-  logoUrl?: string | null;
-}): Promise<string> {
-  const res = await call('/uploadposts/users/generate-jwt', {
-    method: 'POST',
-    headers: headers(true),
-    body: JSON.stringify({
-      username: opts.username,
-      redirect_url: opts.redirectUrl,
-      ...(opts.logoUrl ? {logo_image: opts.logoUrl} : {}),
-      platforms: [...SOCIAL_PLATFORMS],
-      connect_title: 'Connect your accounts to AfterShot',
-      connect_description:
-        `Link the accounts you want your before & after reels posted to${
-          opts.businessName ? `, ${opts.businessName}` : ''
-        }. You can disconnect any time.`,
-      redirect_button_text: 'Back to AfterShot',
-    }),
-  });
-  if (!res.ok || !res.body?.access_url) {
-    throw new Error(
-      `upload-post generate-jwt failed (${res.status}): ${JSON.stringify(res.body).slice(0, 300)}`,
-    );
-  }
-  return res.body.access_url as string;
 }

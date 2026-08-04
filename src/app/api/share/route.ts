@@ -1,7 +1,7 @@
 import {NextRequest, NextResponse} from 'next/server';
 import {serviceClient} from '@/lib/supabase';
 import {buildCaption} from '@/lib/caption';
-import {publishReel, uploadPostConfigured, SOCIAL_PLATFORMS} from '@/lib/uploadPost';
+import {publishReel, uploadPostConfigured, isSocialPlatform} from '@/lib/uploadPost';
 
 // Pulling the mp4 down and handing it to upload-post takes longer than the
 // default serverless slice on a slow render.
@@ -16,10 +16,9 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
   const token = String(body?.t || '').trim();
   const jobId = String(body?.jobId || '').trim();
-  const wanted: string[] = Array.isArray(body?.platforms) ? body.platforms : [];
-  const platforms = wanted.filter((p): p is string =>
-    typeof p === 'string' && (SOCIAL_PLATFORMS as readonly string[]).includes(p),
-  );
+  const wanted: unknown[] = Array.isArray(body?.platforms) ? body.platforms : [];
+  const platforms = wanted.filter(isSocialPlatform);
+  const facebookPageId = String(body?.facebookPageId || '').trim() || null;
   if (!token || !jobId) return NextResponse.json({error: 'missing token or job'}, {status: 400});
   if (!platforms.length) return NextResponse.json({error: 'Pick at least one account.'}, {status: 400});
   if (!uploadPostConfigured()) {
@@ -72,6 +71,7 @@ export async function POST(req: NextRequest) {
         trade: customer.trade,
         hook: job.hook,
       }),
+      facebookPageId,
     });
     // upload-post has accepted it; the platforms finish ingesting on their own
     // clock. Recording 'posted' here matches what the owner sees ("sent"), and

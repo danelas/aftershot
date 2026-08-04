@@ -66,3 +66,29 @@ export async function GET(req: NextRequest) {
     jobCount: jobs.count ?? 0,
   });
 }
+
+// PATCH /api/account?t=<upload_token>  { businessName }
+// The name is stamped on every reel's end card and read out in captions, so a
+// typo at signup follows them onto every video until they can fix it here.
+export async function PATCH(req: NextRequest) {
+  const token = (req.nextUrl.searchParams.get('t') || '').trim();
+  if (!token) return NextResponse.json({error: 'missing token'}, {status: 400});
+
+  const body = await req.json().catch(() => null);
+  const businessName = String(body?.businessName ?? '').trim().replace(/\s+/g, ' ');
+  if (businessName.length < 2 || businessName.length > 60) {
+    return NextResponse.json({error: 'Business name must be 2–60 characters.'}, {status: 400});
+  }
+
+  const sb = serviceClient();
+  const {data, error} = await sb
+    .from('customers')
+    .update({business_name: businessName})
+    .eq('upload_token', token)
+    .select('business_name')
+    .maybeSingle();
+
+  if (error) return NextResponse.json({error: error.message}, {status: 500});
+  if (!data) return NextResponse.json({error: 'not found'}, {status: 404});
+  return NextResponse.json({businessName: data.business_name});
+}

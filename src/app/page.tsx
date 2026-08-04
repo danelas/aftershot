@@ -1,7 +1,7 @@
 import DemoShowcase from './components/DemoShowcase';
 import Reveal from './components/Reveal';
 import SiteNav from './components/SiteNav';
-import {InstagramMark, TikTokMark, YouTubeMark} from './components/BrandIcons';
+import {InstagramMark, TikTokMark, YouTubeMark, FacebookMark} from './components/BrandIcons';
 import {
   Camera, Wand, Send, Star, Phone, Shield, MapPin, Palette, Music,
   Scissors, Check, Zap, Smartphone, ArrowRight, Play,
@@ -12,7 +12,7 @@ const TIERS = [
     id: 'starter', name: 'Starter', price: 19, videos: '6 reels / month',
     tagline: 'For getting your pages active again',
     perks: [
-      'Auto-posting to Instagram, TikTok & YouTube',
+      'Auto-posting to Instagram, TikTok, YouTube & Facebook',
       'Branded sell-card with live Google rating',
       'Home-screen upload link — no app',
       'Studio editing + AI Magic edit',
@@ -54,8 +54,8 @@ export default function Home() {
             <h1>Your before &amp; afters, <em>posted for you.</em></h1>
             <p className="sub">
               You already take the photos. AfterShot turns each job&apos;s before + after
-              into a <b>branded reel</b> and posts it to your Instagram, TikTok, and
-              YouTube — automatically. You never open an editor.
+              into a <b>branded reel</b> and posts it to your Instagram, TikTok,
+              YouTube, and Facebook — automatically. You never open an editor.
             </p>
             <div className="cta-row">
               <a href="/start" className="btn">Start free trial <ArrowRight size={18} /></a>
@@ -68,6 +68,7 @@ export default function Home() {
                 <span className="p-pill"><InstagramMark size={15} />Reels</span>
                 <span className="p-pill"><TikTokMark size={15} />TikTok</span>
                 <span className="p-pill"><YouTubeMark size={15} />Shorts</span>
+                <span className="p-pill"><FacebookMark size={15} />Facebook</span>
               </span>
             </div>
           </div>
@@ -116,9 +117,9 @@ export default function Home() {
                 <div className="num">STEP 3</div>
                 <h3>It posts itself</h3>
                 <p>
-                  The finished reel goes out to your Instagram, TikTok, and YouTube.
-                  Your pages stay active on every platform without you touching any of
-                  them.
+                  The finished reel goes out to your Instagram, TikTok, YouTube, and
+                  Facebook. Your pages stay active on every platform without you
+                  touching any of them.
                 </p>
               </div>
             </Reveal>
@@ -191,7 +192,7 @@ export default function Home() {
               <div className="studio-row"><span className="sicon"><Scissors size={17} /></span> Trim <span className="meter"><i style={{width: '42%'}} /></span></div>
               <div className="studio-row"><span className="sicon"><Music size={17} /></span> Track: Uplift <span className="meter"><i style={{width: '80%'}} /></span></div>
               <div className="studio-row"><span className="sicon"><Palette size={17} /></span> Brand color · Logo · Sell-card</div>
-              <div className="studio-row"><span className="sicon"><Send size={17} /></span> Post to IG · TikTok · YouTube</div>
+              <div className="studio-row"><span className="sicon"><Send size={17} /></span> Post to IG · TikTok · YouTube · Facebook</div>
             </div>
           </Reveal>
         </div>
@@ -281,8 +282,8 @@ export default function Home() {
             <details>
               <summary>How does posting to my accounts work?</summary>
               <p>
-                During setup you securely connect your Instagram, TikTok, and YouTube
-                once. From then on, finished reels publish straight to your pages. You
+                During setup you securely connect your Instagram, TikTok, YouTube, and
+                Facebook once. From then on, finished reels publish straight to your pages. You
                 can pause or disconnect any platform whenever you want.
               </p>
             </details>
