@@ -6,11 +6,17 @@
 // Adds up to 3 extra shots on top of the before/after pair; they play after the
 // reveal and before the sell card. The reel is NOT auto-published from here:
 // the button says "Create reel" and lands you in Studio to review and share.
-import {useRef, useState} from 'react';
+import {useEffect, useRef, useState} from 'react';
 import {anonClient} from '@/lib/supabase';
 import SideBySideSplitter from './SideBySideSplitter';
 
 const MAX_EXTRAS = 3;
+
+const PLATFORM_LABEL: Record<string, string> = {
+  instagram: 'Instagram',
+  tiktok: 'TikTok',
+  youtube: 'YouTube',
+};
 
 type Slot = {file: File; url: string};
 
@@ -21,6 +27,8 @@ export default function JobUploader({token, studioUrl}: {token: string; studioUr
   const [hook, setHook] = useState('');
   const [state, setState] = useState<'idle' | 'sending' | 'done'>('idle');
   const [msg, setMsg] = useState('');
+  // The job we just created — polled so the finished video shows up here.
+  const [jobId, setJobId] = useState<string | null>(null);
   // The collage awaiting a split, if any.
   const [splitting, setSplitting] = useState<File | null>(null);
 
@@ -78,6 +86,7 @@ export default function JobUploader({token, studioUrl}: {token: string; studioUr
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(d.error || 'Could not start your reel.');
+      setJobId(d.jobId || null);
       setState('done');
     } catch (e: any) {
       setMsg(e?.message || 'Something went wrong.');
@@ -85,28 +94,19 @@ export default function JobUploader({token, studioUrl}: {token: string; studioUr
     }
   }
 
+  function reset() {
+    if (before) URL.revokeObjectURL(before.url);
+    if (after) URL.revokeObjectURL(after.url);
+    extras.forEach((e) => URL.revokeObjectURL(e.url));
+    setBefore(null); setAfter(null); setExtras([]); setHook('');
+    setJobId(null); setState('idle');
+  }
+
   if (state === 'done') {
     return (
       <div className="acct-card">
         <p className="acct-label">CREATE A REEL</p>
-        <p className="acct-muted" style={{marginTop: 0}}>
-          <b style={{color: 'var(--ink)'}}>Your reel is rendering.</b> It takes a
-          few minutes. Open Studio to watch for it, make any edits, then share it.
-        </p>
-        <a href={studioUrl} className="btn checkout-btn" style={{textDecoration: 'none'}}>
-          Open Studio
-        </a>
-        <button
-          className="acct-copy"
-          onClick={() => {
-            if (before) URL.revokeObjectURL(before.url);
-            if (after) URL.revokeObjectURL(after.url);
-            extras.forEach((e) => URL.revokeObjectURL(e.url));
-            setBefore(null); setAfter(null); setExtras([]); setHook(''); setState('idle');
-          }}
-        >
-          Create another
-        </button>
+        <ReelResult token={token} jobId={jobId} studioUrl={studioUrl} onAnother={reset} />
       </div>
     );
   }
@@ -183,6 +183,202 @@ export default function JobUploader({token, studioUrl}: {token: string; studioUr
         />
       )}
     </div>
+  );
+}
+
+type JobStatus = {
+  state: 'rendering' | 'ready' | 'failed';
+  url: string | null;
+  error: string | null;
+  posts: {platform: string; status: string}[];
+};
+
+// What happens after "Create reel": the render is watched here and the finished
+// video plays in this same card, with the accounts to send it to right under it.
+// Before this, a new reel only existed in Studio — a second page you had to go
+// find, which is why finished reels sat unshared.
+function ReelResult({
+  token, jobId, studioUrl, onAnother,
+}: {token: string; jobId: string | null; studioUrl: string; onAnother: () => void}) {
+  const [job, setJob] = useState<JobStatus | null>(null);
+  const [accounts, setAccounts] = useState<{platform: string; handle: string | null}[] | null>(null);
+  const [platforms, setPlatforms] = useState<string[]>(['instagram', 'tiktok', 'youtube']);
+  const [picked, setPicked] = useState<string[]>([]);
+  const [sharing, setSharing] = useState(false);
+  const [sent, setSent] = useState<string[]>([]);
+  const [err, setErr] = useState('');
+
+  // Poll until the worker has a video (or gives up). 8s: fast enough that the
+  // reel appears while they're still looking at the page, slow enough to be
+  // free.
+  useEffect(() => {
+    if (!jobId) return;
+    let stop = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const load = async () => {
+      try {
+        const r = await fetch(`/api/jobs/status?t=${encodeURIComponent(token)}&id=${encodeURIComponent(jobId)}`);
+        if (!r.ok) throw new Error();
+        const d: JobStatus = await r.json();
+        if (stop) return;
+        setJob(d);
+        if (d.state === 'rendering') timer = setTimeout(load, 8000);
+      } catch {
+        if (!stop) timer = setTimeout(load, 15000);
+      }
+    };
+    load();
+    return () => { stop = true; clearTimeout(timer); };
+  }, [token, jobId]);
+
+  // Their linked accounts, so the share row offers real destinations.
+  useEffect(() => {
+    fetch(`/api/social/status?t=${encodeURIComponent(token)}`)
+      .then((r) => r.json())
+      .then((d) => {
+        setAccounts(d.accounts ?? []);
+        if (d.platforms?.length) setPlatforms(d.platforms);
+        // Pre-select everything they've connected — the common case is "post it
+        // everywhere", and an empty selection would need an extra tap first.
+        setPicked((d.accounts ?? []).map((a: {platform: string}) => a.platform));
+      })
+      .catch(() => setAccounts([]));
+  }, [token]);
+
+  async function share() {
+    if (!jobId || !picked.length) return;
+    setSharing(true); setErr('');
+    try {
+      const r = await fetch('/api/share', {
+        method: 'POST',
+        headers: {'content-type': 'application/json'},
+        body: JSON.stringify({t: token, jobId, platforms: picked}),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || 'Could not share that reel.');
+      setSent((s) => [...new Set([...s, ...picked])]);
+      setPicked([]);
+    } catch (e: any) {
+      setErr(e?.message || 'Something went wrong.');
+    } finally { setSharing(false); }
+  }
+
+  // "Somewhere else" — hand the file to the phone's share sheet, or download it
+  // on desktop.
+  async function shareFile(url: string) {
+    setErr('');
+    try {
+      const blob = await (await fetch(url)).blob();
+      const file = new File([blob], 'aftershot-reel.mp4', {type: 'video/mp4'});
+      if (navigator.canShare?.({files: [file]})) {
+        await navigator.share({files: [file]});
+        return;
+      }
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = file.name;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } catch {
+      // A cancelled share sheet lands here too — a link they can hit is a
+      // better fallback than an error.
+      window.open(url, '_blank');
+    }
+  }
+
+  const linked = new Set((accounts ?? []).map((a) => a.platform));
+  const done = new Set([...sent, ...(job?.posts ?? []).filter((p) => p.status === 'posted').map((p) => p.platform)]);
+
+  if (!jobId || !job || job.state === 'rendering') {
+    return (
+      <>
+        <p className="acct-muted" style={{marginTop: 0}}>
+          <b style={{color: 'var(--ink)'}}>Your reel is rendering.</b> It takes a
+          few minutes — leave this page open and it&apos;ll appear right here,
+          ready to share.
+        </p>
+        <div className="reel-wait">
+          <span className="reel-spin" />
+          <span>Rendering…</span>
+        </div>
+        <button className="acct-copy" onClick={onAnother}>Create another</button>
+      </>
+    );
+  }
+
+  if (job.state === 'failed') {
+    return (
+      <>
+        <p className="checkout-msg" style={{marginTop: 0}}>
+          That reel didn&apos;t render{job.error ? ` — ${job.error}` : ''}. Try again with
+          the same photos, or email hello@theaftershot.com and we&apos;ll look at it.
+        </p>
+        <button className="btn checkout-btn" onClick={onAnother}>Try again</button>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <p className="acct-muted" style={{marginTop: 0}}>
+        <b style={{color: 'var(--ink)'}}>Your reel is ready.</b> Pick where it goes.
+      </p>
+
+      {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+      <video className="reel-video" src={job.url!} controls playsInline preload="metadata" />
+
+      <p className="acct-label" style={{margin: '16px 0 8px'}}>SHARE TO</p>
+      {accounts === null ? (
+        <p className="acct-muted" style={{margin: 0}}>Checking your connected accounts…</p>
+      ) : (
+        <>
+          <div className="reel-share">
+            {platforms.map((p) => {
+              const isDone = done.has(p);
+              const canPost = linked.has(p);
+              const on = picked.includes(p);
+              return (
+                <button
+                  type="button"
+                  key={p}
+                  className={`reel-chip${on ? ' on' : ''}${isDone ? ' done' : ''}`}
+                  disabled={!canPost || isDone || sharing}
+                  onClick={() => setPicked((s) => (on ? s.filter((x) => x !== p) : [...s, p]))}
+                >
+                  <b>{PLATFORM_LABEL[p] ?? p}</b>
+                  <span>{isDone ? '✓ Posted' : canPost ? (on ? 'Selected' : 'Tap to select') : 'Not connected'}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {linked.size === 0 && (
+            <p className="acct-muted" style={{fontSize: 13}}>
+              No accounts connected yet — connect them under <b style={{color: 'var(--ink)'}}>Where we post</b> below,
+              or share the file straight from your phone.
+            </p>
+          )}
+
+          {linked.size > 0 && (
+            <button className="btn checkout-btn" disabled={!picked.length || sharing}
+              style={{opacity: picked.length && !sharing ? 1 : 0.45}} onClick={share}>
+              {sharing
+                ? 'Sending…'
+                : picked.length
+                  ? `Share to ${picked.map((p) => PLATFORM_LABEL[p] ?? p).join(' + ')}`
+                  : done.size ? 'Shared' : 'Pick an account'}
+            </button>
+          )}
+        </>
+      )}
+
+      <button className="acct-copy" onClick={() => shareFile(job.url!)}>Share somewhere else</button>
+      <a href={studioUrl} className="acct-copy" style={{display: 'block', textAlign: 'center', textDecoration: 'none'}}>
+        Edit in Studio
+      </a>
+      <button className="acct-copy" onClick={onAnother}>Create another</button>
+      {err && <p className="checkout-msg">{err}</p>}
+    </>
   );
 }
 

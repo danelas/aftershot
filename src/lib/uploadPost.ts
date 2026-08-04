@@ -94,6 +94,46 @@ export async function getConnectedAccounts(username: string): Promise<ConnectedA
   return out;
 }
 
+// Publish a rendered reel to the platforms the owner picked, from the web app
+// (the "Share" buttons under a finished reel on /account). The worker has its
+// own copy of this in worker/poster.mjs — that one posts a local file and can
+// afford to poll for ten minutes; a request-scoped route can't, so this hands
+// the upload off and returns the request_id without waiting for the platforms
+// to finish ingesting. Accepted-but-unconfirmed is not a failure.
+export async function publishReel(opts: {
+  username: string;
+  platforms: string[];
+  videoUrl: string;
+  title: string;
+  caption: string;
+}): Promise<{requestId: string | null; body: any}> {
+  if (!opts.platforms.length) throw new Error('No platforms selected.');
+
+  const media = await fetch(opts.videoUrl);
+  if (!media.ok) throw new Error(`Could not read the rendered reel (${media.status}).`);
+  const blob = await media.blob();
+
+  const form = new FormData();
+  form.append('user', opts.username);
+  for (const p of opts.platforms) form.append('platform[]', p);
+  form.append('video', blob, 'reel.mp4');
+  form.append('title', opts.title.slice(0, 90));
+  form.append('description', opts.caption);
+  form.append('caption', opts.caption);
+  if (opts.platforms.includes('instagram')) form.append('media_type', 'REELS');
+  if (opts.platforms.includes('tiktok')) {
+    form.append('privacy_level', process.env.TIKTOK_PRIVACY_LEVEL || 'PUBLIC_TO_EVERYONE');
+  }
+
+  const res = await fetch(`${API_BASE}/upload`, {method: 'POST', headers: headers(), body: form});
+  const text = await res.text();
+  if (!res.ok) throw new Error(`upload-post HTTP ${res.status}: ${text.slice(0, 300)}`);
+  let body: any = null;
+  try { body = text ? JSON.parse(text) : null; } catch { body = text; }
+  const requestId = body && typeof body === 'object' && typeof body.request_id === 'string' ? body.request_id : null;
+  return {requestId, body};
+}
+
 // The hosted, branded page where they actually link accounts. Valid ~48h.
 export async function createConnectUrl(opts: {
   username: string;
