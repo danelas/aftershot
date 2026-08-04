@@ -508,6 +508,13 @@ a { color: inherit; }
 }
 .soc-tile:hover { filter: brightness(1.12); transform: translateY(-1px); }
 .soc-chip { border: 1px solid; color: var(--ink); }
+/* Same chip, but it's a post target you toggle rather than a status readout. */
+.soc-pick {
+  border-color: var(--line-strong); background: transparent;
+  font-family: inherit; cursor: pointer; text-align: left;
+}
+.soc-pick:hover:not(:disabled) { border-color: var(--brand-bright); }
+.soc-pick:disabled { opacity: 0.55; cursor: default; }
 .soc-ic { display: flex; flex: none; }
 .soc-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .soc-tick { flex: none; color: #34d399; font-size: 12px; }

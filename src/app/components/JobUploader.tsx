@@ -9,15 +9,9 @@
 import {useEffect, useRef, useState} from 'react';
 import {anonClient} from '@/lib/supabase';
 import SideBySideSplitter from './SideBySideSplitter';
+import {PLATFORM_META, PLATFORM_LABEL, ALL_PLATFORMS, connectHref} from './PlatformBrand';
 
 const MAX_EXTRAS = 3;
-
-const PLATFORM_LABEL: Record<string, string> = {
-  instagram: 'Instagram',
-  tiktok: 'TikTok',
-  youtube: 'YouTube',
-  facebook: 'Facebook',
-};
 
 type Slot = {file: File; url: string};
 
@@ -271,7 +265,7 @@ function ReelResult({
 }: {token: string; jobId: string | null; studioUrl: string; onAnother: () => void}) {
   const [job, setJob] = useState<JobStatus | null>(null);
   const [accounts, setAccounts] = useState<{platform: string; handle: string | null}[] | null>(null);
-  const [platforms, setPlatforms] = useState<string[]>(['instagram', 'tiktok', 'youtube', 'facebook']);
+  const [platforms, setPlatforms] = useState<string[]>(ALL_PLATFORMS);
   // Facebook reels land on a Page. One page needs no question; several do.
   const [fbPages, setFbPages] = useState<{id: string; name: string}[]>([]);
   const [fbPageId, setFbPageId] = useState('');
@@ -321,7 +315,7 @@ function ReelResult({
   }, [token]);
 
   async function share() {
-    if (!jobId || !picked.length) return;
+    if (!jobId || !targets.length) return;
     setSharing(true); setErr('');
     try {
       const r = await fetch('/api/share', {
@@ -330,13 +324,13 @@ function ReelResult({
         body: JSON.stringify({
           t: token,
           jobId,
-          platforms: picked,
-          facebookPageId: picked.includes('facebook') ? fbPageId || undefined : undefined,
+          platforms: targets,
+          facebookPageId: targets.includes('facebook') ? fbPageId || undefined : undefined,
         }),
       });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(d.error || 'Could not share that reel.');
-      setSent((s) => [...new Set([...s, ...picked])]);
+      setSent((s) => [...new Set([...s, ...targets])]);
       setPicked([]);
     } catch (e: any) {
       setErr(e?.message || 'Something went wrong.');
@@ -368,6 +362,9 @@ function ReelResult({
 
   const linked = new Set((accounts ?? []).map((a) => a.platform));
   const done = new Set([...sent, ...(job?.posts ?? []).filter((p) => p.status === 'posted').map((p) => p.platform)]);
+  // Pre-selection happens before we know which platforms this reel already went
+  // to, so a re-share would otherwise offer to post somewhere it already is.
+  const targets = picked.filter((p) => !done.has(p));
 
   if (!jobId || !job || job.state === 'rendering') {
     return (
@@ -412,27 +409,43 @@ function ReelResult({
         <p className="acct-muted" style={{margin: 0}}>Checking your connected accounts…</p>
       ) : (
         <>
-          <div className="reel-share">
+          {/* An unconnected platform used to be a dead grey chip telling you to
+              go find another card. It's a brand tile that links the account
+              right here instead — same look as "Where we post". */}
+          <div className="soc-grid">
             {platforms.map((p) => {
+              const meta = PLATFORM_META[p];
+              if (!meta) return null;
+              const {label, Icon, solid, tint, ink} = meta;
               const isDone = done.has(p);
-              const canPost = linked.has(p);
               const on = picked.includes(p);
+
+              if (!linked.has(p)) {
+                return (
+                  <a key={p} className="soc-tile" style={{background: solid}} href={connectHref(p, token)}>
+                    <span className="soc-ic"><Icon /></span>
+                    {label}
+                  </a>
+                );
+              }
               return (
                 <button
                   type="button"
                   key={p}
-                  className={`reel-chip${on ? ' on' : ''}${isDone ? ' done' : ''}`}
-                  disabled={!canPost || isDone || sharing}
+                  className={`soc-chip soc-pick${on ? ' on' : ''}`}
+                  style={on || isDone ? {background: tint, borderColor: ink} : undefined}
+                  disabled={isDone || sharing}
                   onClick={() => setPicked((s) => (on ? s.filter((x) => x !== p) : [...s, p]))}
                 >
-                  <b>{PLATFORM_LABEL[p] ?? p}</b>
-                  <span>{isDone ? '✓ Posted' : canPost ? (on ? 'Selected' : 'Tap to select') : 'Not connected'}</span>
+                  <span className="soc-ic" style={{color: ink}}><Icon /></span>
+                  <span className="soc-name">{label}</span>
+                  <span className="soc-tick">{isDone ? 'Posted' : on ? '✓' : ''}</span>
                 </button>
               );
             })}
           </div>
 
-          {picked.includes('facebook') && fbPages.length > 1 && (
+          {targets.includes('facebook') && fbPages.length > 1 && (
             <label className="acct-muted" style={{fontSize: 13, display: 'block'}}>
               Which Facebook Page
               <select
@@ -450,18 +463,18 @@ function ReelResult({
 
           {linked.size === 0 && (
             <p className="acct-muted" style={{fontSize: 13}}>
-              No accounts connected yet — connect them under <b style={{color: 'var(--ink)'}}>Where we post</b> below,
-              or share the file straight from your phone.
+              Tap a platform above to link it — takes a few seconds, and from then on
+              your reels post there on their own. Or share the file straight from your phone.
             </p>
           )}
 
           {linked.size > 0 && (
-            <button className="btn checkout-btn" disabled={!picked.length || sharing}
-              style={{opacity: picked.length && !sharing ? 1 : 0.45}} onClick={share}>
+            <button className="btn checkout-btn" disabled={!targets.length || sharing}
+              style={{opacity: targets.length && !sharing ? 1 : 0.45}} onClick={share}>
               {sharing
                 ? 'Sending…'
-                : picked.length
-                  ? `Share to ${picked.map((p) => PLATFORM_LABEL[p] ?? p).join(' + ')}`
+                : targets.length
+                  ? `Share to ${targets.map((p) => PLATFORM_LABEL[p] ?? p).join(' + ')}`
                   : done.size ? 'Shared' : 'Pick an account'}
             </button>
           )}
