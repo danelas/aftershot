@@ -20,10 +20,17 @@ const {fontFamily} = loadFont();
 const SANS = 'Arial, Helvetica, sans-serif';
 
 // 30fps @ 1080x1920. BEFORE hold → wipe reveal (whoosh) → AFTER hold → sell card.
-// uplift (14.7s), not energy (8.75s): energy is SHORTER than the 9.02s reel, so
-// it went silent just before the end card finished. Declared above the defaults
-// that reference it.
-const HOUSE_TRACK = 'music/uplift.mp3';
+// Chosen by measurement, not vibes. Over a 9s reel the tracks behave very
+// differently at the start, and a reel has no time for a build:
+//   sport   audible 0.05s   <- house track
+//   hiphop  audible 0.08s
+//   pop     audible 0.29s
+//   uplift  0.62s, and a quiet ambient bed (-25..-31dB RMS) throughout
+//   epic    2.55s slow build
+//   energy  never crosses -30dB inside 9s, AND is 8.75s < the 9.02s reel
+// energy was the original default, so reels shipped with inaudible music.
+// Declared above the defaults that reference it.
+const HOUSE_TRACK = 'music/sport.mp3';
 
 export const beforeAfterSchema = z.object({
   beforeUrl: z.string(),
