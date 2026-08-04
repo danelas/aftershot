@@ -509,6 +509,49 @@ a { color: inherit; }
 }
 .up-add:hover { border-color: var(--brand-bright); }
 
+.up-sbs {
+  display: block; margin-top: 10px; padding: 11px 12px; border-radius: 10px;
+  border: 1px dashed var(--line-strong); background: rgba(255, 255, 255, 0.02);
+  color: var(--muted); font-size: 13px; text-align: center; cursor: pointer;
+}
+.up-sbs:hover { border-color: var(--brand-bright); color: var(--ink); }
+.up-sbs b { color: var(--brand-bright); }
+
+/* ---------- side-by-side splitter ---------- */
+.sbs-backdrop {
+  position: fixed; inset: 0; z-index: 60; display: flex; align-items: center;
+  justify-content: center; padding: 18px; background: rgba(3, 6, 12, 0.82);
+  backdrop-filter: blur(6px); overflow-y: auto;
+}
+.sbs-panel {
+  width: 100%; max-width: 460px; padding: 20px; border-radius: 16px;
+  border: 1px solid var(--line-strong); background: var(--bg-raised);
+  max-height: 100%; overflow-y: auto;
+}
+.sbs-preview { display: grid; gap: 8px; margin: 12px 0 16px; }
+.sbs-preview.h { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.sbs-preview.v { grid-template-columns: minmax(0, 1fr); }
+.sbs-half { position: relative; }
+.sbs-clip {
+  overflow: hidden; border-radius: 10px; border: 1px solid var(--line-strong);
+  background: #000; aspect-ratio: 3 / 4;
+}
+.sbs-clip img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.sbs-tag {
+  position: absolute; bottom: 6px; left: 6px; padding: 3px 9px; border-radius: 999px;
+  background: rgba(0, 0, 0, 0.66); color: #fff; font-size: 11px; font-weight: 800;
+  letter-spacing: 0.05em; text-transform: uppercase;
+}
+.sbs-row {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+  font-size: 13px; color: var(--muted);
+}
+.sbs-row span { flex: none; width: 82px; }
+.sbs-row input[type='range'] { flex: 1; accent-color: var(--brand); min-width: 0; }
+.sbs-row b { flex: none; width: 42px; text-align: right; color: var(--ink); }
+.sbs-actions { display: flex; gap: 8px; }
+.sbs-actions .acct-copy { margin-top: 0; font-size: 13px; padding: 10px; }
+
 /* Checkerboard so a transparent PNG doesn't look like a broken image. */
 .acct-logo-wrap {
   display: flex; align-items: center; justify-content: center;

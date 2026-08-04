@@ -8,6 +8,7 @@
 // the button says "Create reel" and lands you in Studio to review and share.
 import {useRef, useState} from 'react';
 import {anonClient} from '@/lib/supabase';
+import SideBySideSplitter from './SideBySideSplitter';
 
 const MAX_EXTRAS = 3;
 
@@ -20,6 +21,8 @@ export default function JobUploader({token, studioUrl}: {token: string; studioUr
   const [hook, setHook] = useState('');
   const [state, setState] = useState<'idle' | 'sending' | 'done'>('idle');
   const [msg, setMsg] = useState('');
+  // The collage awaiting a split, if any.
+  const [splitting, setSplitting] = useState<File | null>(null);
 
   const ready = Boolean(before && after) && state !== 'sending';
 
@@ -117,6 +120,16 @@ export default function JobUploader({token, studioUrl}: {token: string; studioUr
         <Picker label="After" slot={after} onPick={setSlot(after, setAfter)} />
       </div>
 
+      {/* Lots of trades already have one combined collage — their phone app
+          makes them. Cut it here instead of asking for the originals. */}
+      <label className="up-sbs">
+        Already have a side-by-side? <b>Split it for me</b>
+        <input
+          type="file" accept="image/*" style={{display: 'none'}}
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) setSplitting(f); e.target.value = ''; }}
+        />
+      </label>
+
       <p className="acct-muted" style={{fontSize: 13, margin: '14px 0 8px'}}>
         Extra shots (optional, up to {MAX_EXTRAS}) — detail views that play after
         the before &amp; after.
@@ -157,6 +170,18 @@ export default function JobUploader({token, studioUrl}: {token: string; studioUr
         </p>
       ) : null}
       {msg && <p className="checkout-msg">{msg}</p>}
+
+      {splitting && (
+        <SideBySideSplitter
+          file={splitting}
+          onCancel={() => setSplitting(null)}
+          onDone={(b, a) => {
+            setSlot(before, setBefore)(b);
+            setSlot(after, setAfter)(a);
+            setSplitting(null);
+          }}
+        />
+      )}
     </div>
   );
 }

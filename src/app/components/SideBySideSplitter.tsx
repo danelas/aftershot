@@ -1,0 +1,135 @@
+'use client';
+
+// Turn one side-by-side collage into the before/after pair.
+//
+// A blind 50/50 cut is wrong often enough to matter — collage apps draw a
+// divider bar, and plenty of pairs aren't symmetric — so the split line is
+// draggable, the seam is trimmable, and the halves can be swapped.
+import {useEffect, useMemo, useRef, useState} from 'react';
+import {loadImage, splitImage, type LoadedImage, type SplitAxis} from '@/lib/splitImage';
+
+export default function SideBySideSplitter({
+  file, onCancel, onDone,
+}: {
+  file: File;
+  onCancel: () => void;
+  onDone: (before: File, after: File) => void;
+}) {
+  const [img, setImg] = useState<LoadedImage | null>(null);
+  const [err, setErr] = useState('');
+  const [ratio, setRatio] = useState(0.5);
+  const [gap, setGap] = useState(0);
+  const [axis, setAxis] = useState<SplitAxis>('horizontal');
+  const [swapped, setSwapped] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const urlRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    let dead = false;
+    loadImage(file)
+      .then((l) => {
+        if (dead) { URL.revokeObjectURL(l.objectUrl); return; }
+        urlRef.current = l.objectUrl;
+        setImg(l);
+        setAxis(l.axis);
+      })
+      .catch((e) => setErr(e.message));
+    return () => {
+      dead = true;
+      if (urlRef.current) URL.revokeObjectURL(urlRef.current);
+    };
+  }, [file]);
+
+  const horizontal = axis === 'horizontal';
+
+  // Clip each half out of the same <img> so the preview matches the real cut.
+  const halfStyle = (which: 'a' | 'b'): React.CSSProperties => {
+    const left = which === 'a';
+    const start = left ? 0 : Math.min(0.95, ratio + gap);
+    const end = left ? Math.max(0.05, ratio - gap) : 1;
+    const pct = (n: number) => `${n * 100}%`;
+    return horizontal
+      ? {clipPath: `inset(0 ${pct(1 - end)} 0 ${pct(start)})`, transform: `translateX(${pct(-start)})`}
+      : {clipPath: `inset(${pct(start)} 0 ${pct(1 - end)} 0)`, transform: `translateY(${pct(-start)})`};
+  };
+
+  const labels = useMemo(
+    () => (swapped ? {a: 'After', b: 'Before'} : {a: 'Before', b: 'After'}),
+    [swapped],
+  );
+
+  async function apply() {
+    if (!img) return;
+    setBusy(true); setErr('');
+    try {
+      const [first, second] = await splitImage(img, {ratio, axis, gap});
+      onDone(swapped ? second : first, swapped ? first : second);
+    } catch (e: any) {
+      setErr(e?.message || 'Could not cut that image.');
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="sbs-backdrop" role="dialog" aria-modal="true">
+      <div className="sbs-panel">
+        <p className="acct-label" style={{marginBottom: 4}}>SPLIT YOUR SIDE-BY-SIDE</p>
+        <p className="acct-muted" style={{fontSize: 13, marginTop: 0}}>
+          Drag the line to where the two shots meet. We&apos;ll cut it into a
+          before and an after.
+        </p>
+
+        {err && <p className="checkout-msg">{err}</p>}
+
+        {img && (
+          <>
+            <div className={`sbs-preview ${horizontal ? 'h' : 'v'}`}>
+              {(['a', 'b'] as const).map((which) => (
+                <div className="sbs-half" key={which}>
+                  <div className="sbs-clip">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={img.objectUrl} alt="" style={halfStyle(which)} />
+                  </div>
+                  <span className="sbs-tag">{labels[which]}</span>
+                </div>
+              ))}
+            </div>
+
+            <label className="sbs-row">
+              <span>Split point</span>
+              <input
+                type="range" min={0.1} max={0.9} step={0.005}
+                value={ratio} onChange={(e) => setRatio(Number(e.target.value))}
+              />
+              <b>{Math.round(ratio * 100)}%</b>
+            </label>
+
+            <label className="sbs-row">
+              <span>Trim seam</span>
+              <input
+                type="range" min={0} max={0.06} step={0.002}
+                value={gap} onChange={(e) => setGap(Number(e.target.value))}
+              />
+              <b>{gap ? `${(gap * 200).toFixed(0)}%` : 'off'}</b>
+            </label>
+
+            <div className="sbs-actions">
+              <button className="acct-copy" onClick={() => setSwapped((s) => !s)}>
+                Swap before / after
+              </button>
+              <button className="acct-copy" onClick={() => setAxis(horizontal ? 'vertical' : 'horizontal')}>
+                {horizontal ? 'Stacked instead' : 'Side-by-side instead'}
+              </button>
+            </div>
+
+            <button className="btn checkout-btn" onClick={apply} disabled={busy}>
+              {busy ? 'Cutting…' : 'Use these two'}
+            </button>
+          </>
+        )}
+
+        <button className="acct-signout" onClick={onCancel}>Cancel</button>
+      </div>
+    </div>
+  );
+}
