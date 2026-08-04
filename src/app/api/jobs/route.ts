@@ -30,6 +30,10 @@ export async function POST(req: NextRequest) {
       before_is_video: !!body.beforeIsVideo,
       after_is_video: !!body.afterIsVideo,
       hook: body.hook || null,
+      // Capped server-side too — the client limit is a convenience, not a rule.
+      extra_urls: Array.isArray(body.extraPaths)
+        ? body.extraPaths.filter((p: unknown) => typeof p === 'string' && p).slice(0, 3)
+        : [],
       status: 'pending',
     })
     .select('id')

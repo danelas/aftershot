@@ -42,6 +42,9 @@ export const beforeAfterSchema = z.object({
   brandColor: z.string().default('#0EA5E9'),
   logoUrl: z.string().nullable().default(null),
   musicSrc: z.string().nullable().default(null),
+  // Up to 3 extra shots, shown after the reveal and before the sell card —
+  // the detail shots that don't fit the single before/after pair.
+  extraUrls: z.array(z.string()).default([]),
   // Conversion fields (collected once at onboarding, reused on every reel).
   phone: z.string().nullable().default(null),
   handle: z.string().nullable().default(null), // @theirhandle
@@ -64,6 +67,7 @@ export const beforeAfterDefaults: BeforeAfterProps = {
   brandColor: '#0EA5E9',
   logoUrl: null,
   musicSrc: staticFile(HOUSE_TRACK),
+  extraUrls: [],
   phone: '(561) 555-0123',
   handle: '@aquashinefl',
   serviceArea: 'Jupiter & Palm Beach County',
@@ -78,8 +82,13 @@ const BEFORE_HOLD = 66;
 const WIPE = 24;
 const AFTER_HOLD = 96;
 const END_CARD = 84;
-export const beforeAfterDuration = () => BEFORE_HOLD + WIPE + AFTER_HOLD + END_CARD;
-const TOTAL = BEFORE_HOLD + WIPE + AFTER_HOLD + END_CARD;
+const EXTRA_HOLD = 54; // 1.8s per extra shot
+export const MAX_EXTRAS = 3;
+
+// Duration is no longer fixed — each extra shot adds EXTRA_HOLD frames, so the
+// Composition computes it per-render via calculateMetadata.
+export const beforeAfterDuration = (extras = 0) =>
+  BEFORE_HOLD + WIPE + AFTER_HOLD + Math.min(extras, MAX_EXTRAS) * EXTRA_HOLD + END_CARD;
 const MUSIC_GAIN = 0.55;
 const MUSIC_FADE = 26; // ~0.9s tail
 
@@ -202,7 +211,10 @@ export const BeforeAfter: React.FC<BeforeAfterProps> = (props) => {
   const revealStart = BEFORE_HOLD;
   const wipe = interpolate(frame, [revealStart, revealStart + WIPE], [0, 100], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
   const hookIn = spring({frame, fps, config: {damping: 200}});
-  const endStart = BEFORE_HOLD + WIPE + AFTER_HOLD;
+  const extras = (props.extraUrls ?? []).slice(0, MAX_EXTRAS);
+  const extrasStart = BEFORE_HOLD + WIPE + AFTER_HOLD;
+  const endStart = extrasStart + extras.length * EXTRA_HOLD;
+  const TOTAL = endStart + END_CARD;
   // Sell-card text colours, derived from the brand so bright brands stay legible.
   // Remotion serves public/ under a hashed prefix, so only staticFile() called
   // from inside the bundle can name a track — the worker can't. It passes
@@ -251,6 +263,21 @@ export const BeforeAfter: React.FC<BeforeAfterProps> = (props) => {
           <div style={{position: 'absolute', bottom: 40, left: 44, fontFamily: SANS, fontWeight: 800, fontSize: 34, color: '#fff', textShadow: '0 2px 8px rgba(0,0,0,0.7)'}}>{props.handle}</div>
         ) : null}
       </Sequence>
+
+      {/* EXTRA SHOTS — the detail views that don't fit the before/after pair.
+          Each gets its own Ken Burns move so a still doesn't sit dead. */}
+      {extras.map((url, i) => (
+        <Sequence
+          key={`${url}-${i}`}
+          from={extrasStart + i * EXTRA_HOLD}
+          durationInFrames={EXTRA_HOLD}
+        >
+          <KenBurns url={url} isVideo={false} />
+          {props.handle ? (
+            <div style={{position: 'absolute', bottom: 40, left: 44, fontFamily: SANS, fontWeight: 800, fontSize: 34, color: '#fff', textShadow: '0 2px 8px rgba(0,0,0,0.7)'}}>{props.handle}</div>
+          ) : null}
+        </Sequence>
+      ))}
 
       {/* SELL CARD */}
       <Sequence from={endStart} durationInFrames={END_CARD}>

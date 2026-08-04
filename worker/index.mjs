@@ -62,6 +62,9 @@ async function renderJob(job) {
     afterUrl: await signedUrl('intake', job.after_url),
     beforeIsVideo: job.before_is_video,
     afterIsVideo: job.after_is_video,
+    // Extra shots play after the reveal; each one lengthens the reel, which is
+    // why the composition computes its duration from these.
+    extraUrls: await Promise.all((job.extra_urls || []).map((p) => signedUrl('intake', p))),
     businessName: c.business_name,
     hook: job.hook || "You won't believe the difference",
     brandColor: c.brand_color || '#0EA5E9',

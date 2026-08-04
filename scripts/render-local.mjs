@@ -70,9 +70,21 @@ if (logoPath && !fs.existsSync(logoPath)) {
   process.exit(1);
 }
 
+// --extra can be repeated, up to 3. These play after the reveal.
+const extraPaths = [];
+for (let i = 0; i < process.argv.length; i++) {
+  if (process.argv[i] === '--extra' && process.argv[i + 1]) {
+    const p = path.resolve(process.argv[i + 1]);
+    if (!fs.existsSync(p)) { console.error(`--extra not found: ${p}`); process.exit(1); }
+    extraPaths.push(p);
+  }
+}
+if (extraPaths.length > 3) { console.error('At most 3 --extra shots.'); process.exit(1); }
+
 const served = {
   '/before': path.resolve(beforePath),
   '/after': path.resolve(afterPath),
+  ...Object.fromEntries(extraPaths.map((p, i) => [`/extra${i}`, p])),
   ...(musicPath ? {'/music': musicPath} : {}),
   ...(logoPath ? {'/logo': logoPath} : {}),
 };
@@ -88,6 +100,7 @@ const origin = `http://127.0.0.1:${server.address().port}`;
 const inputProps = {
   beforeUrl: `${origin}/before`,
   afterUrl: `${origin}/after`,
+  extraUrls: extraPaths.map((_, i) => `${origin}/extra${i}`),
   beforeIsVideo: flag('before-video'),
   afterIsVideo: flag('after-video'),
   businessName: arg('name', 'Your Business'),

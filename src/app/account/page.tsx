@@ -5,6 +5,7 @@
 import {Suspense, useEffect, useState} from 'react';
 import {useSearchParams} from 'next/navigation';
 import {loadToken, saveToken, clearToken} from '@/lib/session';
+import JobUploader from '../components/JobUploader';
 
 type Account = {
   businessName: string; email: string; uploadUrl: string; studioUrl: string;
@@ -80,15 +81,15 @@ function AccountInner() {
       <h1 style={{marginBottom: 4}}>{acct.businessName}</h1>
       <p className="acct-muted" style={{marginTop: 0}}>{acct.email}</p>
 
+      {/* The thing people came here to do goes first. */}
+      <JobUploader token={token!} studioUrl={acct.studioUrl} />
+
       <div className="acct-card">
-        <p className="acct-label">POST A JOB</p>
+        <p className="acct-label">ON YOUR PHONE</p>
         <p className="acct-muted" style={{marginTop: 0}}>
-          This is the whole routine — open it on your phone, add it to your home
-          screen, and drop a before + after after every job.
+          Add this link to your phone&apos;s home screen and you can post a job in
+          two taps, straight from the driveway.
         </p>
-        <a href={acct.uploadUrl} className="btn checkout-btn" style={{textDecoration: 'none', marginTop: 4}}>
-          Upload a before &amp; after
-        </a>
         <button
           className="acct-copy"
           onClick={() => { navigator.clipboard?.writeText(acct.uploadUrl); setCopied(true); setTimeout(() => setCopied(false), 1800); }}
