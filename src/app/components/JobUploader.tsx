@@ -76,6 +76,16 @@ export default function JobUploader({token, studioUrl}: {token: string; studioUr
   // The collage awaiting a split, if any.
   const [splitting, setSplitting] = useState<File | null>(null);
 
+  // Hitting "Create reel" swaps a ~700px form for a ~230px status card, and the
+  // browser keeps scrollTop where it was — so the page appears to slide down by
+  // the difference and you lose the thing you just did. Pull the card back to
+  // the top of the viewport instead.
+  const cardRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (state !== 'done') return;
+    cardRef.current?.scrollIntoView({block: 'start', behavior: 'smooth'});
+  }, [state]);
+
   const ready = Boolean(before && after) && state !== 'sending';
 
   // Object URLs are revoked when a slot is replaced or cleared so previews
@@ -149,7 +159,7 @@ export default function JobUploader({token, studioUrl}: {token: string; studioUr
 
   if (state === 'done') {
     return (
-      <div className="acct-card">
+      <div className="acct-card" ref={cardRef}>
         <p className="acct-label">CREATE A REEL</p>
         <ReelResult token={token} jobId={jobId} studioUrl={studioUrl} onAnother={reset} />
       </div>
@@ -157,7 +167,7 @@ export default function JobUploader({token, studioUrl}: {token: string; studioUr
   }
 
   return (
-    <div className="acct-card">
+    <div className="acct-card" ref={cardRef}>
       <p className="acct-label">CREATE A REEL</p>
 
       <div className="up-pair">
