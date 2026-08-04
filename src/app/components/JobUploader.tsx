@@ -25,6 +25,9 @@ export default function JobUploader({token, studioUrl}: {token: string; studioUr
   const [after, setAfter] = useState<Slot | null>(null);
   const [extras, setExtras] = useState<Slot[]>([]);
   const [hook, setHook] = useState('');
+  // Their photos already carry a printed BEFORE/AFTER (most collage apps add
+  // one). The reel then skips its own label instead of stacking a second one.
+  const [labelsBakedIn, setLabelsBakedIn] = useState(false);
   const [state, setState] = useState<'idle' | 'sending' | 'done'>('idle');
   const [msg, setMsg] = useState('');
   // The job we just created — polled so the finished video shows up here.
@@ -82,6 +85,7 @@ export default function JobUploader({token, studioUrl}: {token: string; studioUr
           afterIsVideo: a.isVideo,
           extraPaths: ex,
           hook: hook.trim() || undefined,
+          labelsBakedIn,
         }),
       });
       const d = await res.json().catch(() => ({}));
@@ -99,7 +103,7 @@ export default function JobUploader({token, studioUrl}: {token: string; studioUr
     if (after) URL.revokeObjectURL(after.url);
     extras.forEach((e) => URL.revokeObjectURL(e.url));
     setBefore(null); setAfter(null); setExtras([]); setHook('');
-    setJobId(null); setState('idle');
+    setLabelsBakedIn(false); setJobId(null); setState('idle');
   }
 
   if (state === 'done') {
@@ -160,6 +164,18 @@ export default function JobUploader({token, studioUrl}: {token: string; studioUr
         onChange={(e) => setHook(e.target.value)}
       />
 
+      {/* Also reachable from the splitter, but plenty of people upload two
+          shots their phone app already stamped. */}
+      <label className="sbs-check" style={{marginTop: 12}}>
+        <input
+          type="checkbox" checked={labelsBakedIn}
+          onChange={(e) => setLabelsBakedIn(e.target.checked)}
+        />
+        <span>
+          These photos already say Before / After — <b>don&apos;t add ours</b>
+        </span>
+      </label>
+
       <button className="btn checkout-btn" disabled={!ready} onClick={createReel}
         style={{opacity: ready ? 1 : 0.45}}>
         {state === 'sending' ? 'Uploading…' : 'Create reel'}
@@ -175,9 +191,10 @@ export default function JobUploader({token, studioUrl}: {token: string; studioUr
         <SideBySideSplitter
           file={splitting}
           onCancel={() => setSplitting(null)}
-          onDone={(b, a) => {
+          onDone={(b, a, opts) => {
             setSlot(before, setBefore)(b);
             setSlot(after, setAfter)(a);
+            if (opts.labelsBakedIn) setLabelsBakedIn(true);
             setSplitting(null);
           }}
         />

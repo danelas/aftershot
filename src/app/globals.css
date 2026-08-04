@@ -582,6 +582,12 @@ a { color: inherit; }
 .sbs-row span { flex: none; width: 82px; }
 .sbs-row input[type='range'] { flex: 1; accent-color: var(--brand); min-width: 0; }
 .sbs-row b { flex: none; width: 42px; text-align: right; color: var(--ink); }
+.sbs-check {
+  display: flex; align-items: flex-start; gap: 9px; cursor: pointer;
+  margin: 4px 0 14px; font-size: 13px; line-height: 1.45; color: var(--muted);
+}
+.sbs-check input { margin-top: 2px; accent-color: var(--brand); flex: none; }
+.sbs-check b { color: var(--ink); }
 .sbs-actions { display: flex; gap: 8px; }
 .sbs-actions .acct-copy { margin-top: 0; font-size: 13px; padding: 10px; }
 

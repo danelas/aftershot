@@ -67,6 +67,8 @@ async function renderJob(job) {
     extraUrls: await Promise.all((job.extra_urls || []).map((p) => signedUrl('intake', p))),
     businessName: c.business_name,
     hook: job.hook || "You won't believe the difference",
+    // Their collage already says BEFORE/AFTER — don't stack ours on top.
+    showLabels: !job.labels_baked_in,
     brandColor: c.brand_color || '#0EA5E9',
     logoUrl: c.logo_url || null,
     musicSrc: null, // TODO: pick a track from public/music per trade

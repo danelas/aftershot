@@ -45,6 +45,9 @@ export const beforeAfterSchema = z.object({
   // Up to 3 extra shots, shown after the reveal and before the sell card —
   // the detail shots that don't fit the single before/after pair.
   extraUrls: z.array(z.string()).default([]),
+  // Off when the owner's photos already have BEFORE/AFTER printed on them —
+  // drawing ours as well labels the same shot twice.
+  showLabels: z.boolean().default(true),
   // Conversion fields (collected once at onboarding, reused on every reel).
   phone: z.string().nullable().default(null),
   handle: z.string().nullable().default(null), // @theirhandle
@@ -68,6 +71,7 @@ export const beforeAfterDefaults: BeforeAfterProps = {
   logoUrl: null,
   musicSrc: staticFile(HOUSE_TRACK),
   extraUrls: [],
+  showLabels: true,
   phone: '(561) 555-0123',
   handle: '@aquashinefl',
   serviceArea: 'Jupiter & Palm Beach County',
@@ -252,7 +256,11 @@ export const BeforeAfter: React.FC<BeforeAfterProps> = (props) => {
           <KenBurns url={props.afterUrl} isVideo={props.afterIsVideo} phase={0.03} pop />
         </AbsoluteFill>
 
-        {frame < revealStart + WIPE / 2 ? <Label text="BEFORE" color={props.brandColor} /> : <Label text="AFTER" color={props.brandColor} />}
+        {props.showLabels
+          ? (frame < revealStart + WIPE / 2
+            ? <Label text="BEFORE" color={props.brandColor} />
+            : <Label text="AFTER" color={props.brandColor} />)
+          : null}
 
         <div style={{position: 'absolute', bottom: 240, left: 60, right: 60, textAlign: 'center', fontFamily, fontSize: 76, lineHeight: 1.04, color: '#fff', transform: `translateY(${(1 - hookIn) * 40}px)`, opacity: hookIn, textShadow: '0 4px 18px rgba(0,0,0,0.7)'}}>
           {props.hook}

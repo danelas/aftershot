@@ -51,6 +51,8 @@ create table if not exists jobs (
   -- Up to 3 extra shots, played after the after-reveal and before the sell
   -- card. Storage paths in the same 'intake' bucket, in display order.
   extra_urls   text[] not null default '{}',
+  -- The photos already carry a printed BEFORE/AFTER, so the reel skips its own.
+  labels_baked_in boolean not null default false,
   status       text not null default 'pending', -- pending | rendering | rendered | posting | done | failed
   attempts     int  not null default 0,
   error        text,

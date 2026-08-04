@@ -50,24 +50,31 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({error: 'account paused'}, {status: 403});
   }
 
-  const {data: job, error} = await sb
-    .from('jobs')
-    .insert({
-      customer_id: customer.id,
-      before_url: body.beforePath,
-      after_url: body.afterPath,
-      before_is_video: !!body.beforeIsVideo,
-      after_is_video: !!body.afterIsVideo,
-      hook: body.hook || null,
-      // Capped server-side too — the client limit is a convenience, not a rule.
-      extra_urls: Array.isArray(body.extraPaths)
-        ? body.extraPaths.filter((p: unknown) => typeof p === 'string' && p).slice(0, 3)
-        : [],
-      status: 'pending',
-    })
-    .select('id')
-    .single();
-  if (error) return NextResponse.json({error: error.message}, {status: 500});
+  const row: Record<string, unknown> = {
+    customer_id: customer.id,
+    before_url: body.beforePath,
+    after_url: body.afterPath,
+    before_is_video: !!body.beforeIsVideo,
+    after_is_video: !!body.afterIsVideo,
+    hook: body.hook || null,
+    // Capped server-side too — the client limit is a convenience, not a rule.
+    extra_urls: Array.isArray(body.extraPaths)
+      ? body.extraPaths.filter((p: unknown) => typeof p === 'string' && p).slice(0, 3)
+      : [],
+    // The photos already carry a printed BEFORE/AFTER, so the reel shouldn't
+    // draw its own on top.
+    labels_baked_in: !!body.labelsBakedIn,
+    status: 'pending',
+  };
+
+  let {data: job, error} = await sb.from('jobs').insert(row).select('id').single();
+  // 42703 = column doesn't exist: migration 002 hasn't been run on this
+  // database yet. Losing the flag beats refusing to make the reel.
+  if (error?.code === '42703') {
+    const {labels_baked_in: _dropped, ...legacy} = row;
+    ({data: job, error} = await sb.from('jobs').insert(legacy).select('id').single());
+  }
+  if (error || !job) return NextResponse.json({error: error?.message || 'insert failed'}, {status: 500});
 
   await sb.from('reminders').upsert({customer_id: customer.id, last_job_at: new Date().toISOString()});
   await kickWorker();
