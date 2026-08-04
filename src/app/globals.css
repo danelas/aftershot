@@ -132,7 +132,7 @@ a { color: inherit; }
 .hero-wrap { position: relative; overflow: hidden; }
 .hero {
   display: grid; grid-template-columns: 1.08fr 0.92fr; gap: 56px;
-  align-items: center; padding: 72px 0 88px; position: relative; z-index: 1;
+  align-items: center; padding-block: 72px 88px; position: relative; z-index: 1;
 }
 .hero-badge {
   display: inline-flex; align-items: center; gap: 7px;
@@ -398,7 +398,7 @@ a { color: inherit; }
 .final .btn { position: relative; z-index: 1; }
 
 /* footer */
-.footer { padding: 30px 0; font-size: 13.5px; color: var(--faint); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; border-top: 1px solid var(--line); }
+.footer { padding-block: 30px; font-size: 13.5px; color: var(--faint); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; border-top: 1px solid var(--line); }
 .footer a { text-decoration: none; }
 .footer a:hover { color: var(--muted); }
 
@@ -720,7 +720,7 @@ a { color: inherit; }
 .onb-fine { margin-top: 18px; font-size: 13.5px; color: var(--faint); line-height: 1.6; }
 
 @media (max-width: 880px) {
-  .hero { grid-template-columns: 1fr; padding: 44px 0 64px; gap: 44px; }
+  .hero { grid-template-columns: 1fr; padding-block: 44px 64px; gap: 44px; }
   .hero .sub { max-width: none; }
   .steps, .features, .tiers { grid-template-columns: 1fr; }
   .studio-band { grid-template-columns: 1fr; }
