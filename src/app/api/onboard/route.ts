@@ -1,5 +1,6 @@
 import {NextRequest, NextResponse} from 'next/server';
 import {serviceClient, findCustomerByEmail} from '@/lib/supabase';
+import {authUser} from '@/lib/supabase-server';
 import {sendEmail, welcomeEmail, recoveryEmail} from '@/lib/email';
 
 // POST /api/onboard  (multipart form)
@@ -11,7 +12,13 @@ export async function POST(req: NextRequest) {
 
   const str = (k: string) => (form.get(k)?.toString() || '').trim();
   const businessName = str('businessName');
-  const email = str('email');
+
+  // If they signed in with Google/Facebook first, the provider's verified
+  // address wins over whatever is in the form — /start shows it read-only, but
+  // the server can't take the browser's word for that.
+  const user = await authUser();
+  const verifiedEmail = user?.email?.trim() || '';
+  const email = verifiedEmail || str('email');
   if (!businessName || !email) {
     return NextResponse.json({error: 'Business name and email are required'}, {status: 400});
   }
@@ -34,6 +41,24 @@ export async function POST(req: NextRequest) {
   const existing = await findCustomerByEmail(email);
   if (existing) {
     const base = process.env.PUBLIC_BASE_URL || new URL(req.url).origin;
+
+    // Except when the address is provider-verified: they've proven they own the
+    // inbox, which is the same thing the emailed link proves. Hand the token
+    // over directly rather than making them go via their email.
+    if (verifiedEmail) {
+      await serviceClient()
+        .from('customers')
+        .update({auth_user_id: user!.id})
+        .eq('id', existing.id)
+        .is('auth_user_id', null);
+      return NextResponse.json({
+        ok: true,
+        existing: true,
+        uploadToken: existing.upload_token,
+        uploadUrl: `${base}/u/${existing.upload_token}`,
+      });
+    }
+
     const {ok} = await sendEmail({
       to: existing.email,
       ...recoveryEmail(existing.business_name, `${base}/account?t=${existing.upload_token}`),
@@ -58,6 +83,7 @@ export async function POST(req: NextRequest) {
       google_place_id: str('placeId') || null,
       rating: num('rating'),
       review_count: num('reviewCount'),
+      auth_user_id: user?.id ?? null,
     })
     .select('id, upload_token')
     .single();

@@ -777,12 +777,41 @@ a { color: inherit; }
 }
 .onb-fine { margin-top: 18px; font-size: 13.5px; color: var(--faint); line-height: 1.6; }
 
+/* Google / Facebook sign-in. Both marks keep their brand colours against the
+   dark UI — a monochrome Google "G" isn't allowed under Google's branding
+   rules, and a recoloured Facebook blue stops reading as Facebook. */
+.oauth-wrap { display: flex; flex-direction: column; gap: 10px; margin: 4px 0 14px; }
+.oauth-btn {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  width: 100%; padding: 13px 16px; border-radius: 999px; cursor: pointer;
+  font-family: inherit; font-size: 15px; font-weight: 700; border: 0;
+  transition: filter 0.15s, background 0.15s;
+}
+.oauth-btn:disabled { opacity: 0.6; cursor: default; }
+.oauth-btn svg { flex: none; }
+.oauth-google { background: #fff; color: #1f2328; }
+.oauth-google:hover:not(:disabled) { background: #f1f3f4; }
+.oauth-facebook { background: #1877f2; color: #fff; }
+.oauth-facebook:hover:not(:disabled) { filter: brightness(1.08); }
+.oauth-note { font-size: 13px; color: var(--faint); line-height: 1.5; margin: 2px 0 0; text-align: center; }
+/* "or" rule between the social buttons and the email form below them. */
+.oauth-or {
+  display: flex; align-items: center; gap: 12px;
+  font-size: 12.5px; color: var(--faint); text-transform: uppercase;
+  letter-spacing: 0.06em; margin: 4px 0 14px;
+}
+.oauth-or::before, .oauth-or::after {
+  content: ''; flex: 1; height: 1px; background: var(--line);
+}
+
 @media (max-width: 880px) {
   .hero { grid-template-columns: 1fr; padding-block: 44px 64px; gap: 44px; }
   .hero .sub { max-width: none; }
   .steps, .features, .tiers { grid-template-columns: 1fr; }
   .studio-band { grid-template-columns: 1fr; }
-  .nav-links a:not(.btn) { display: none; }
+  /* The marketing links go, but "Sign in" is how a returning customer gets to
+     their account from a phone — it stays. */
+  .nav-links a:not(.btn):not(.nav-signin) { display: none; }
   .tier.popular { order: -1; }
   .chip-float.c1 { right: -8px; top: 8%; }
   .chip-float.c2 { left: -8px; bottom: 8%; }

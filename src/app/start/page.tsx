@@ -3,8 +3,10 @@
 // Onboarding: everything the reel sell-card needs, collected once. The Google
 // Places picker auto-fills the real rating + review count. Styled to match the
 // dark landing page; trade is a chip grid covering every transformation trade.
-import {useState} from 'react';
+import {useEffect, useState} from 'react';
 import {saveToken} from '@/lib/session';
+import {authClient} from '@/lib/supabase-browser';
+import SocialAuth from '../components/SocialAuth';
 import {
   Building2, Palette as PaletteIcon, Droplets, Car, Leaf, Paintbrush, Home as HomeIcon,
   Layers, Hammer, Trash2, Sparkles, Waves, LayoutGrid, Sun, MoreHorizontal,
@@ -48,7 +50,29 @@ export default function Start() {
   } | null>(null);
   const [msg, setMsg] = useState('');
 
+  // Set once we know this browser has a Google/Facebook session. The email then
+  // comes from the provider rather than the keyboard, so it can't be typo'd —
+  // and it's the address that has to match for sign-in to find them again.
+  const [authEmail, setAuthEmail] = useState<string | null>(null);
+
   const set = (k: string, v: any) => setF((p) => ({...p, [k]: v}));
+
+  // /auth/callback sends people here when they signed in but have no account
+  // yet. Pick up whatever the provider told us so they retype as little as
+  // possible.
+  useEffect(() => {
+    authClient().auth.getUser().then(({data}) => {
+      const u = data.user;
+      if (!u?.email) return;
+      setAuthEmail(u.email);
+      const suggested = (u.user_metadata?.name || u.user_metadata?.full_name || '') as string;
+      setF((p) => ({
+        ...p,
+        email: u.email!,
+        businessName: p.businessName || suggested,
+      }));
+    }).catch(() => { /* not signed in — the form works exactly as before */ });
+  }, []);
 
   async function findBusiness() {
     if (!f.businessName.trim()) return;
@@ -112,6 +136,26 @@ export default function Start() {
   // They already had an account under this email. We never put the link on
   // screen in that case (see /api/onboard) — it only goes to the inbox that owns
   // it, so this can't be used to walk into someone else's account.
+  // Signed in with a provider and the address already had an account: no email
+  // round-trip needed, they're already back in.
+  if (state === 'done' && result?.existing && result.uploadToken) {
+    return (
+      <main className="onb">
+        <div className="onb-inner onb-done">
+          <div className="big">👋</div>
+          <h1>Welcome back</h1>
+          <p className="onb-sub">
+            <b style={{color: 'var(--ink)'}}>{f.email}</b> already has an AfterShot account, and
+            you&apos;re signed into it now. Nothing changed.
+          </p>
+          <a href="/account" className="btn checkout-btn" style={{textDecoration: 'none'}}>
+            Open my account
+          </a>
+        </div>
+      </main>
+    );
+  }
+
   if (state === 'done' && result?.existing) {
     return (
       <main className="onb">
@@ -181,6 +225,15 @@ export default function Start() {
         <h1>Set up AfterShot</h1>
         <p className="onb-sub">Takes 2 minutes. This is what shows on your reels.</p>
 
+        {/* Signing in first is optional, but it's what lets them get back into
+            the account from a new phone without digging out the welcome email. */}
+        {!authEmail && (
+          <>
+            <SocialAuth note="Sign in first and you'll never need to hunt for your upload link." />
+            <p className="oauth-or">or just fill this in</p>
+          </>
+        )}
+
         <div className="onb-card">
           <p className="sec-title"><Building2 size={15} /> YOUR BUSINESS</p>
           <div className="onb-row">
@@ -225,7 +278,15 @@ export default function Start() {
               />
             </div>
           )}
-          <input className="onb-input" type="email" placeholder="Email" value={f.email} onChange={(e) => set('email', e.target.value)} />
+          <input
+            className="onb-input" type="email" placeholder="Email"
+            value={f.email}
+            readOnly={!!authEmail}
+            onChange={(e) => set('email', e.target.value)}
+          />
+          {authEmail && (
+            <p className="onb-linked">✓ Signed in as {authEmail} — this is how you&apos;ll get back in</p>
+          )}
           <input className="onb-input" placeholder="Phone (shown as the Call/Text CTA)" value={f.phone} onChange={(e) => set('phone', e.target.value)} />
           <input className="onb-input" placeholder="Service area (e.g. Jupiter & Palm Beach County)" value={f.serviceArea} onChange={(e) => set('serviceArea', e.target.value)} />
         </div>

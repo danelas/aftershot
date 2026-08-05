@@ -28,6 +28,7 @@ export default function SiteNav() {
               <a href="#how">How it works</a>
               <a href="#studio">Studio</a>
               <a href="#pricing">Pricing</a>
+              <a href="/account" className="nav-signin">Sign in</a>
               <a href="/start" className="btn btn-sm">Start free trial</a>
             </div>
           )}

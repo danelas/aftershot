@@ -5,6 +5,8 @@
 import {Suspense, useCallback, useEffect, useState} from 'react';
 import {useSearchParams} from 'next/navigation';
 import {loadToken, saveToken, clearToken} from '@/lib/session';
+import {authClient} from '@/lib/supabase-browser';
+import SocialAuth from '../components/SocialAuth';
 import JobUploader from '../components/JobUploader';
 import {PLATFORM_META, PLATFORM_LABEL, ALL_PLATFORMS, connectHref, tileStyle} from '../components/PlatformBrand';
 
@@ -30,18 +32,16 @@ function AccountInner() {
   // Set by Stripe's success_url. The webhook that records the card may not have
   // landed yet, so this is what tells them it worked — not acct.hasCard.
   const cardAdded = params.get('card') === 'added';
+  // Set by /auth/callback when the provider round-trip didn't produce a session.
+  const signinFailed = params.get('signin') === 'failed';
   const [token, setToken] = useState<string | null>(null);
   const [acct, setAcct] = useState<Account | null>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'none' | 'error'>('loading');
   const [copied, setCopied] = useState(false);
 
-  useEffect(() => {
-    const t = qsToken || loadToken();
-    if (!t) { setState('none'); return; }
+  const load = useCallback((t: string) => {
     setToken(t);
-    // Arriving with ?t= (e.g. from the welcome email) also signs this browser in.
-    if (qsToken) saveToken(qsToken);
-    fetch(`/api/account?t=${encodeURIComponent(t)}`)
+    return fetch(`/api/account?t=${encodeURIComponent(t)}`)
       .then(async (r) => {
         if (r.status === 404) { clearToken(); setState('none'); return; }
         if (!r.ok) throw new Error('failed');
@@ -49,7 +49,27 @@ function AccountInner() {
         setAcct(d); saveToken(t, d.businessName); setState('ready');
       })
       .catch(() => setState('error'));
-  }, [qsToken]);
+  }, []);
+
+  useEffect(() => {
+    const t = qsToken || loadToken();
+    if (t) {
+      // Arriving with ?t= (the welcome email, or /auth/callback after a social
+      // sign-in) also signs this browser in.
+      if (qsToken) saveToken(qsToken);
+      load(t);
+      return;
+    }
+    // No token in this browser — but a Google/Facebook session outlives
+    // localStorage, so ask the server whether it knows who this is.
+    fetch('/api/account/resolve')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.token) { saveToken(d.token, d.businessName); load(d.token); }
+        else setState('none');
+      })
+      .catch(() => setState('none'));
+  }, [qsToken, load]);
 
   if (state === 'loading') {
     return <Shell><p className="acct-muted">Loading your account…</p></Shell>;
@@ -58,11 +78,16 @@ function AccountInner() {
   if (state === 'none') {
     return (
       <Shell>
-        <h1>No account on this device</h1>
+        <h1>Sign in</h1>
+        {signinFailed && (
+          <p className="onb-err">That sign-in didn&apos;t go through. Try again below.</p>
+        )}
         <p className="acct-muted">
-          AfterShot doesn&apos;t use passwords — your upload link is your account.
-          Open the link we emailed you and you&apos;ll land right back here.
+          Use the same Google or Facebook account as the email you signed up
+          with, and we&apos;ll take you straight to your account.
         </p>
+        <SocialAuth note="No password to remember, and it works on any device." />
+        <p className="oauth-or">or</p>
         <RecoverCard />
         <a href="/start" className="btn btn-ghost checkout-btn" style={{textDecoration: 'none'}}>
           I&apos;m new — set up AfterShot
@@ -151,8 +176,18 @@ function AccountInner() {
         </a>
       </div>
 
-      <button className="acct-signout" onClick={() => { clearToken(); location.href = '/'; }}>
-        Forget this device
+      {/* Must drop the Supabase session too — otherwise /api/account/resolve
+          signs them straight back in on the next load and the button looks
+          broken. */}
+      <button
+        className="acct-signout"
+        onClick={async () => {
+          clearToken();
+          try { await authClient().auth.signOut(); } catch { /* already gone */ }
+          location.href = '/';
+        }}
+      >
+        Sign out
       </button>
     </Shell>
   );

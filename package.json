@@ -19,6 +19,7 @@
     "@remotion/google-fonts": "4.0.395",
     "@remotion/renderer": "4.0.395",
     "@stripe/stripe-js": "^9.12.1",
+    "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.45.0",
     "autoprefixer": "^10.5.4",
     "dotenv": "^16.4.5",
