@@ -397,6 +397,34 @@ a { color: inherit; }
 .final p { color: var(--muted); font-size: 17px; margin: 0 0 34px; position: relative; z-index: 1; }
 .final .btn { position: relative; z-index: 1; }
 
+/* legal pages (/privacy, /terms, /data-deletion) */
+.legal {
+  max-width: 720px; margin: 0 auto; padding: 32px 20px 72px;
+  color: var(--muted); font-size: 15.5px; line-height: 1.7;
+}
+.legal h1 { margin: 22px 0 4px; }
+.legal h2 {
+  margin: 34px 0 10px; font-size: 19px; color: var(--ink);
+  font-family: var(--font-display), sans-serif;
+}
+.legal h3 { margin: 22px 0 6px; font-size: 16px; color: var(--ink); }
+.legal p { margin: 0 0 12px; }
+.legal ul { margin: 0 0 14px; padding-left: 20px; }
+.legal li { margin-bottom: 7px; }
+.legal a { color: var(--brand-bright); }
+.legal b, .legal strong { color: var(--ink); }
+.legal-updated { font-size: 13.5px; color: var(--faint); margin-bottom: 26px; }
+.legal-callout {
+  border: 1px solid var(--line-strong); border-left: 3px solid var(--brand);
+  background: var(--card); border-radius: 10px; padding: 14px 16px; margin: 0 0 16px;
+}
+.legal-callout p:last-child { margin-bottom: 0; }
+.legal-foot {
+  margin-top: 26px; padding-top: 16px; border-top: 1px solid var(--line);
+  font-size: 14px;
+}
+.legal-foot + .legal-foot { border-top: 0; padding-top: 0; margin-top: 8px; color: var(--faint); }
+
 /* footer */
 .footer { padding-block: 30px; font-size: 13.5px; color: var(--faint); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; border-top: 1px solid var(--line); }
 .footer a { text-decoration: none; }

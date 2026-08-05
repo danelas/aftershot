@@ -322,7 +322,14 @@ export default function Home() {
 
       <footer className="container footer">
         <span>© {new Date().getFullYear()} AfterShot</span>
-        <span><a href="/start">Get started</a></span>
+        {/* Google and Meta both check that these are reachable from the site
+            itself, not just from the app-review form. */}
+        <span style={{display: 'flex', gap: 14, flexWrap: 'wrap'}}>
+          <a href="/privacy">Privacy</a>
+          <a href="/terms">Terms</a>
+          <a href="/data-deletion">Delete my data</a>
+          <a href="/start">Get started</a>
+        </span>
       </footer>
     </>
   );
