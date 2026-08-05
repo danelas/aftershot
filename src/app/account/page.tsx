@@ -4,6 +4,7 @@
 // on any device) or from this browser's remembered token.
 import {Suspense, useCallback, useEffect, useState} from 'react';
 import {useSearchParams} from 'next/navigation';
+import {Check, Star} from 'lucide-react';
 import {loadToken, saveToken, clearToken} from '@/lib/session';
 import {authClient} from '@/lib/supabase-browser';
 import SocialAuth from '../components/SocialAuth';
@@ -133,7 +134,7 @@ function AccountInner() {
           className="acct-copy"
           onClick={() => { navigator.clipboard?.writeText(acct.uploadUrl); setCopied(true); setTimeout(() => setCopied(false), 1800); }}
         >
-          {copied ? '✓ Copied' : 'Copy my upload link'}
+          {copied ? <><Check size={15} strokeWidth={3} /> Copied</> : 'Copy my upload link'}
         </button>
       </div>
 
@@ -169,7 +170,11 @@ function AccountInner() {
         <div className="acct-row"><span>Jobs posted</span><b>{acct.jobCount}</b></div>
         <div className="acct-row">
           <span>Google rating</span>
-          <b>{acct.linkedToGoogle && acct.rating != null ? `★ ${acct.rating} (${acct.reviewCount})` : acct.linkedToGoogle ? 'Linked — no reviews yet' : 'Not linked'}</b>
+          <b>
+            {acct.linkedToGoogle && acct.rating != null ? (
+              <><Star size={13} fill="currentColor" style={{verticalAlign: -1}} /> {acct.rating} ({acct.reviewCount})</>
+            ) : acct.linkedToGoogle ? 'Linked — no reviews yet' : 'Not linked'}
+          </b>
         </div>
         <a href={acct.studioUrl} className="btn btn-ghost checkout-btn" style={{textDecoration: 'none'}}>
           Open Studio
@@ -204,8 +209,8 @@ function CardCard({token, justAdded}: {token: string; justAdded: boolean}) {
   if (justAdded) {
     return (
       <p className="acct-muted" style={{fontSize: 13, marginBottom: 0}}>
-        ✓ Card saved — it can take a moment to show above. Your plan now continues
-        automatically when the trial ends.
+        <Check size={14} strokeWidth={3} style={{verticalAlign: -2}} /> Card saved — it can take a
+        moment to show above. Your plan now continues automatically when the trial ends.
       </p>
     );
   }
@@ -571,7 +576,7 @@ function SocialCard({token}: {token: string}) {
                       Reconnect
                     </a>
                   ) : (
-                    <span className="soc-tick" aria-label="connected">✓</span>
+                    <span className="soc-tick" aria-label="connected"><Check size={14} strokeWidth={3} /></span>
                   )}
                 </span>
               ) : (

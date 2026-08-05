@@ -6,7 +6,7 @@
 // Auth = the same upload token as the /u upload page: /studio?t=<token>
 import {Suspense, useEffect, useState} from 'react';
 import {useSearchParams} from 'next/navigation';
-import {Clapperboard, Wand2} from 'lucide-react';
+import {Clapperboard, TriangleAlert, Wand2} from 'lucide-react';
 import VideoStudio from '@/components/VideoStudio';
 import {uploadToStorage} from '@/lib/upload';
 import type {AutoDirectResult, BrandKit} from '@/lib/studio';
@@ -224,7 +224,7 @@ function StudioInner() {
                     >
                       {failed ? (
                         <>
-                          <span className="text-lg">⚠️</span>
+                          <TriangleAlert size={18} className="text-red-300" />
                           <span className="text-[11px] font-semibold text-red-300">Didn&apos;t render</span>
                         </>
                       ) : (

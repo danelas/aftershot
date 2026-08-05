@@ -499,6 +499,9 @@ a { color: inherit; }
   width: 100%; margin-top: 10px; padding: 12px; border-radius: 12px;
   border: 1px solid var(--line-strong); background: transparent; color: var(--ink);
   font-family: inherit; font-size: 14.5px; font-weight: 600; cursor: pointer;
+  /* inline-flex so the confirmation tick sits on the text baseline rather than
+     dropping the label a few pixels when it swaps in */
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
 }
 .acct-copy:hover { background: rgba(255, 255, 255, 0.05); }
 .name-edit {
@@ -514,7 +517,10 @@ a { color: inherit; }
   font-family: inherit; font-size: 12.5px; font-weight: 600; text-align: left;
   border: 1px solid var(--line-strong); background: transparent;
 }
-.hook-ai-btn { color: var(--brand-bright); border-color: rgba(56, 189, 248, 0.35); flex: none; }
+.hook-ai-btn {
+  color: var(--brand-bright); border-color: rgba(56, 189, 248, 0.35); flex: none;
+  display: inline-flex; align-items: center; gap: 6px;
+}
 .hook-ai-btn:hover:not(:disabled) { background: rgba(14, 165, 233, 0.12); }
 .hook-ai-btn:disabled { opacity: 0.55; cursor: default; }
 .hook-ai-pick { color: var(--muted); }
@@ -551,7 +557,7 @@ a { color: inherit; }
 .soc-pick:disabled { opacity: 0.55; cursor: default; }
 .soc-ic { display: flex; flex: none; }
 .soc-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.soc-tick { flex: none; color: #34d399; font-size: 12px; }
+.soc-tick { flex: none; color: #34d399; font-size: 12px; display: inline-flex; align-items: center; }
 .soc-redo { flex: none; font-size: 11px; font-weight: 700; color: var(--brand-bright); }
 .soc-unlink {
   padding: 0; border: 0; background: none; font: inherit; color: inherit;
@@ -797,7 +803,9 @@ a { color: inherit; }
 .onb-logo .l-hint { color: var(--faint); font-size: 13px; }
 .onb-err { color: #f87171; font-size: 14px; margin: 4px 0 10px; }
 .onb-done { text-align: center; padding-top: 8vh; }
-.onb-done .big { font-size: 54px; }
+/* Was a 54px emoji; now a Lucide glyph, so centre it and give it the brand
+   colour rather than inheriting the body text grey. */
+.onb-done .big { display: flex; justify-content: center; color: var(--brand-bright); margin-bottom: 6px; }
 .onb-link-card {
   background: var(--card); border: 1px solid var(--line-strong); border-radius: 12px;
   padding: 16px; margin: 18px 0 14px; word-break: break-all;

@@ -13,6 +13,7 @@ import {
   ChevronDown,
   ChevronUp,
   Copy,
+  Image as ImageIcon,
   ImagePlus,
   Layers,
   Magnet,
@@ -30,7 +31,9 @@ import {
   Share2,
   Smile,
   Sparkles,
+  Star,
   Subtitles,
+  Tag,
   Trash2,
   Type,
   Undo2,
@@ -1696,8 +1699,13 @@ export default function VideoStudio({
                     onClick={() => setSelectedId(o.id)}
                     className="flex min-w-0 flex-1 items-center gap-2 text-left"
                   >
-                    <span className="text-base leading-none">
-                      {o.kind === "emoji" ? "🙂" : o.kind === "qr" ? "▦" : o.kind === "logo" ? "🖼️" : o.kind === "review" ? "★" : o.kind === "sticker" ? "🏷️" : "🅃"}
+                    <span className="leading-none text-mist-300">
+                      {o.kind === "emoji" ? <Smile size={16} />
+                        : o.kind === "qr" ? <QrCode size={16} />
+                        : o.kind === "logo" ? <ImageIcon size={16} />
+                        : o.kind === "review" ? <Star size={16} />
+                        : o.kind === "sticker" ? <Tag size={16} />
+                        : <Type size={16} />}
                     </span>
                     <span className="truncate text-sm font-medium text-white">{label}</span>
                   </button>

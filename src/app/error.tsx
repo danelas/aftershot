@@ -4,6 +4,7 @@
 // "Application error" screen — which reads as "the site crashed" and leaves no
 // trace in the logs. Show something useful and log the real error.
 import {useEffect} from 'react';
+import {TriangleAlert} from 'lucide-react';
 
 export default function Error({error, reset}: {error: Error & {digest?: string}; reset: () => void}) {
   useEffect(() => {
@@ -14,7 +15,7 @@ export default function Error({error, reset}: {error: Error & {digest?: string};
     <main className="checkout">
       <a href="/" className="logo"><img src="/logo-mark.png" alt="" />After<span>Shot</span></a>
       <div className="checkout-card" style={{textAlign: 'center'}}>
-        <div style={{fontSize: 54}}>⚠️</div>
+        <TriangleAlert size={48} strokeWidth={1.5} color="#f59e0b" />
         <h1>Something broke on our end</h1>
         <p style={{color: 'var(--muted)', lineHeight: 1.6}}>
           Sorry about that — nothing you did caused it, and if you were signing

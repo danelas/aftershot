@@ -3,6 +3,7 @@
 // The whole friction-killer: one screen, two photos, done. Owners add this to
 // their home screen (PWA) so it's a one-tap icon. No editor, no account, no app.
 import {useEffect, useState} from 'react';
+import {Clapperboard, CircleCheck} from 'lucide-react';
 import {anonClient} from '@/lib/supabase';
 import {use} from 'react';
 import {saveToken} from '@/lib/session';
@@ -54,7 +55,7 @@ export default function UploadPage({params}: {params: Promise<{token: string}>})
   if (state === 'done') {
     return (
       <main style={wrap}>
-        <div style={{fontSize: 64}}>✅</div>
+        <CircleCheck size={64} strokeWidth={1.5} color="#0EA5E9" />
         <h1 style={{fontSize: 28, margin: '12px 0'}}>Got it!</h1>
         <p style={{opacity: 0.7, textAlign: 'center'}}>
           Your reel is being made and will post automatically. Send another after your next job.
@@ -62,7 +63,9 @@ export default function UploadPage({params}: {params: Promise<{token: string}>})
         <button style={btn} onClick={() => {setBefore(null); setAfter(null); setHook(''); setState('idle');}}>
           Send another
         </button>
-        <a href={`/studio?t=${token}`} style={studioLink}>🎬 Edit your reels in Studio →</a>
+        <a href={`/studio?t=${token}`} style={studioLink}>
+          <Clapperboard size={15} style={{verticalAlign: -3}} /> Edit your reels in Studio →
+        </a>
       </main>
     );
   }

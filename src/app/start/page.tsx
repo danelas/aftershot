@@ -10,6 +10,7 @@ import SocialAuth from '../components/SocialAuth';
 import {
   Building2, Palette as PaletteIcon, Droplets, Car, Leaf, Paintbrush, Home as HomeIcon,
   Layers, Hammer, Trash2, Sparkles, Waves, LayoutGrid, Sun, MoreHorizontal,
+  Check, CircleCheck, Mail, Star,
 } from 'lucide-react';
 
 type Match = {id: string; name: string; address: string; rating: number | null; reviewCount: number | null};
@@ -142,7 +143,7 @@ export default function Start() {
     return (
       <main className="onb">
         <div className="onb-inner onb-done">
-          <div className="big">👋</div>
+          <div className="big"><CircleCheck size={54} strokeWidth={1.5} /></div>
           <h1>Welcome back</h1>
           <p className="onb-sub">
             <b style={{color: 'var(--ink)'}}>{f.email}</b> already has an AfterShot account, and
@@ -160,7 +161,7 @@ export default function Start() {
     return (
       <main className="onb">
         <div className="onb-inner onb-done">
-          <div className="big">📬</div>
+          <div className="big"><Mail size={54} strokeWidth={1.5} /></div>
           <h1>You already have an account</h1>
           <p className="onb-sub">
             {result.emailed
@@ -186,7 +187,7 @@ export default function Start() {
     return (
       <main className="onb">
         <div className="onb-inner onb-done">
-          <div className="big">🎉</div>
+          <div className="big"><CircleCheck size={54} strokeWidth={1.5} /></div>
           <h1>You&apos;re set up!</h1>
           <p className="onb-sub">
             This is your upload link. Open it on your phone and <b style={{color: 'var(--ink)'}}>Add to
@@ -247,18 +248,23 @@ export default function Start() {
               {matches.map((m) => (
                 <button key={m.id} type="button" onClick={() => pick(m)} className="onb-match">
                   <b>{m.name}</b> <span className="addr">{m.address}</span>
-                  {m.rating != null && <span className="stars"> · ★ {m.rating} ({m.reviewCount})</span>}
+                  {m.rating != null && (
+                    <span className="stars">
+                      {' · '}<Star size={12} fill="currentColor" style={{verticalAlign: -1}} /> {m.rating} ({m.reviewCount})
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
           )}
           {f.placeId && (
             <p className="onb-linked">
+              <Check size={13} strokeWidth={3} style={{verticalAlign: -1}} />{' '}
               {f.rating === ''
                 // Real case: newer trades are on Google with zero reviews. Still
                 // worth linking — the rating syncs itself once they get some.
-                ? '✓ Linked to Google — no reviews there yet, so the reel skips the rating for now'
-                : `✓ Linked to Google — live rating ${f.rating} (${f.reviewCount} reviews)`}
+                ? 'Linked to Google — no reviews there yet, so the reel skips the rating for now'
+                : `Linked to Google — live rating ${f.rating} (${f.reviewCount} reviews)`}
             </p>
           )}
           {lookupNote && !f.placeId && <p className="onb-note">{lookupNote}</p>}
@@ -285,7 +291,9 @@ export default function Start() {
             onChange={(e) => set('email', e.target.value)}
           />
           {authEmail && (
-            <p className="onb-linked">✓ Signed in as {authEmail} — this is how you&apos;ll get back in</p>
+            <p className="onb-linked">
+              <Check size={13} strokeWidth={3} style={{verticalAlign: -1}} /> Signed in as {authEmail} — this is how you&apos;ll get back in
+            </p>
           )}
           <input className="onb-input" placeholder="Phone (shown as the Call/Text CTA)" value={f.phone} onChange={(e) => set('phone', e.target.value)} />
           <input className="onb-input" placeholder="Service area (e.g. Jupiter & Palm Beach County)" value={f.serviceArea} onChange={(e) => set('serviceArea', e.target.value)} />

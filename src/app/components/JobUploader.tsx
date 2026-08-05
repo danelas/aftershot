@@ -7,6 +7,7 @@
 // reveal and before the sell card. The reel is NOT auto-published from here:
 // the button says "Create reel" and lands you in Studio to review and share.
 import {useEffect, useRef, useState} from 'react';
+import {Check, Sparkles} from 'lucide-react';
 import {anonClient} from '@/lib/supabase';
 import SideBySideSplitter from './SideBySideSplitter';
 import {PLATFORM_META, PLATFORM_LABEL, ALL_PLATFORMS, connectHref, tileStyle} from './PlatformBrand';
@@ -44,7 +45,8 @@ function HookHelper({
   return (
     <div className="hook-ai">
       <button type="button" className="hook-ai-btn" onClick={suggest} disabled={busy}>
-        {busy ? 'Thinking…' : ideas.length ? '✨ More ideas' : '✨ Write one for me'}
+        <Sparkles size={15} />
+        {busy ? 'Thinking…' : ideas.length ? 'More ideas' : 'Write one for me'}
       </button>
       {ideas.map((h) => (
         <button key={h} type="button" className="hook-ai-pick" onClick={() => onPick(h)}>
@@ -439,7 +441,7 @@ function ReelResult({
                 >
                   <span className="soc-ic" style={{color: ink}}><Icon /></span>
                   <span className="soc-name">{label}</span>
-                  <span className="soc-tick">{isDone ? 'Posted' : on ? '✓' : ''}</span>
+                  <span className="soc-tick">{isDone ? 'Posted' : on ? <Check size={14} strokeWidth={3} /> : ''}</span>
                 </button>
               );
             })}

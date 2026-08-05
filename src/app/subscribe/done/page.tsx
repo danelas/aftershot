@@ -3,6 +3,7 @@
 // The moment right after signup is when someone is most ready to post their
 // first job — so the primary action here is "upload", not "back to homepage".
 import {Suspense, useEffect, useState} from 'react';
+import {CircleCheck} from 'lucide-react';
 import {useSearchParams} from 'next/navigation';
 import {loadToken, saveToken} from '@/lib/session';
 
@@ -27,7 +28,7 @@ function DoneInner() {
     <main className="checkout">
       <a href="/" className="logo"><img src="/logo-mark.png" alt="" />After<span>Shot</span></a>
       <div className="checkout-card" style={{textAlign: 'center'}}>
-        <div style={{fontSize: 54}}>🎉</div>
+        <CircleCheck size={52} strokeWidth={1.5} color="#0EA5E9" />
         <h1>Trial started</h1>
         <p style={{color: 'var(--muted)', lineHeight: 1.6}}>
           You have 7 free days, and we don&apos;t have a card on file — so there is

@@ -3,6 +3,7 @@
 // Last resort: an error thrown in the root layout replaces <html>/<body>, so
 // this can't reuse globals.css classes. Keep it self-contained.
 import {useEffect} from 'react';
+import {TriangleAlert} from 'lucide-react';
 
 export default function GlobalError({error, reset}: {error: Error & {digest?: string}; reset: () => void}) {
   useEffect(() => {
@@ -19,7 +20,7 @@ export default function GlobalError({error, reset}: {error: Error & {digest?: st
         }}
       >
         <div style={{maxWidth: 420}}>
-          <div style={{fontSize: 48}}>⚠️</div>
+          <TriangleAlert size={44} strokeWidth={1.5} color="#f59e0b" />
           <h1 style={{fontSize: 24, margin: '10px 0'}}>AfterShot hit an error</h1>
           <p style={{color: '#9fb0c7', lineHeight: 1.6}}>
             Sorry — please try again. If you were starting a trial, nothing was charged.
