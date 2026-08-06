@@ -33,6 +33,11 @@ const SANS = 'Arial, Helvetica, sans-serif';
 const HOUSE_TRACK = 'music/sport.mp3';
 
 export const beforeAfterSchema = z.object({
+  // 'wipe'    — BEFORE hold → expanding wipe reveals AFTER (the original).
+  // 'stacked' — before/after share the frame top/bottom the whole time, panning
+  //             in sync, with whip-pan cuts into the extra shots. The IG
+  //             roof-cleaning format: the transformation is never off screen.
+  style: z.enum(['wipe', 'stacked']).default('wipe'),
   beforeUrl: z.string(),
   afterUrl: z.string(),
   beforeIsVideo: z.boolean().default(false),
@@ -61,6 +66,7 @@ export const beforeAfterSchema = z.object({
 export type BeforeAfterProps = z.infer<typeof beforeAfterSchema>;
 
 export const beforeAfterDefaults: BeforeAfterProps = {
+  style: 'wipe',
   beforeUrl: staticFile('real-before.jpg'),
   afterUrl: staticFile('real-after.jpg'),
   beforeIsVideo: false,
@@ -124,6 +130,27 @@ const Star: React.FC<{size?: number; color?: string}> = ({size = 44, color = '#F
     <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14l-5-4.87 6.91-1.01L12 2z" />
   </svg>
 );
+
+// Small corner tag for the stacked halves — the big centered Label would cover
+// half of an already-half-height shot.
+const CornerTag: React.FC<{text: string; color: string}> = ({text, color}) => (
+  <div style={{position: 'absolute', top: 28, left: 32, fontFamily, fontSize: 44, letterSpacing: 3, color: '#fff', textShadow: '0 4px 16px rgba(0,0,0,0.6)', borderBottom: `7px solid ${color}`, paddingBottom: 4}}>
+    {text}
+  </div>
+);
+
+// Cheap whip-pan: the first ~8 frames of a shot slide in horizontally under
+// heavy blur, like the fast pans between houses in the reference reels.
+const WHIP = 8;
+const WhipIn: React.FC<{children: React.ReactNode}> = ({children}) => {
+  const frame = useCurrentFrame();
+  const t = interpolate(frame, [0, WHIP], [1, 0], {extrapolateRight: 'clamp'});
+  return (
+    <AbsoluteFill style={{transform: `translateX(${t * -140}px)`, filter: t > 0 ? `blur(${t * 24}px)` : undefined}}>
+      {children}
+    </AbsoluteFill>
+  );
+};
 
 const Label: React.FC<{text: string; color: string}> = ({text, color}) => (
   <div style={{position: 'absolute', top: 96, left: 0, right: 0, textAlign: 'center', fontFamily, fontSize: 100, letterSpacing: 4, color: '#fff', textShadow: '0 6px 24px rgba(0,0,0,0.55)'}}>
@@ -225,6 +252,7 @@ export const BeforeAfter: React.FC<BeforeAfterProps> = (props) => {
   // musicSrc: null, which is why every real customer reel rendered silent.
   // Treat null as "use the house track"; pass '' for genuine silence.
   const music = props.musicSrc === '' ? null : (props.musicSrc ?? staticFile(HOUSE_TRACK));
+  const stacked = props.style === 'stacked';
   const endInk = readableOn(props.brandColor);
   const ctaInk = contrast(props.brandColor, '#ffffff') >= DISPLAY_CONTRAST ? props.brandColor : INK;
 
@@ -245,22 +273,50 @@ export const BeforeAfter: React.FC<BeforeAfterProps> = (props) => {
           }
         />
       ) : null}
-      {/* SFX: whoosh as the wipe starts, sparkle when it lands. */}
-      <Sequence from={revealStart - 3} durationInFrames={20}><Audio src={staticFile('sfx/whoosh.mp3')} volume={0.8} /></Sequence>
-      <Sequence from={revealStart + WIPE - 3} durationInFrames={24}><Audio src={staticFile('sfx/sparkle.mp3')} volume={0.7} /></Sequence>
+      {/* SFX. Wipe: whoosh as the wipe starts, sparkle when it lands.
+          Stacked: a whoosh under each whip-pan cut into an extra shot. */}
+      {!stacked ? (
+        <>
+          <Sequence from={revealStart - 3} durationInFrames={20}><Audio src={staticFile('sfx/whoosh.mp3')} volume={0.8} /></Sequence>
+          <Sequence from={revealStart + WIPE - 3} durationInFrames={24}><Audio src={staticFile('sfx/sparkle.mp3')} volume={0.7} /></Sequence>
+        </>
+      ) : (
+        extras.map((_, i) => (
+          <Sequence key={`whoosh-${i}`} from={extrasStart + i * EXTRA_HOLD - 3} durationInFrames={20}>
+            <Audio src={staticFile('sfx/whoosh.mp3')} volume={0.7} />
+          </Sequence>
+        ))
+      )}
 
-      {/* BEFORE + AFTER stacked; after revealed by an expanding clip. */}
+      {/* THE PAIR. Wipe: after revealed by an expanding clip. Stacked: both on
+          screen the whole time, top/bottom, panning in sync (same phase). */}
       <Sequence durationInFrames={endStart}>
-        <KenBurns url={props.beforeUrl} isVideo={props.beforeIsVideo} />
-        <AbsoluteFill style={{clipPath: `polygon(0 0, ${wipe}% 0, ${wipe}% 100%, 0 100%)`}}>
-          <KenBurns url={props.afterUrl} isVideo={props.afterIsVideo} phase={0.03} pop />
-        </AbsoluteFill>
+        {stacked ? (
+          <>
+            <div style={{position: 'absolute', top: 0, left: 0, right: 0, height: '50%', overflow: 'hidden'}}>
+              <KenBurns url={props.beforeUrl} isVideo={props.beforeIsVideo} />
+              {props.showLabels ? <CornerTag text="BEFORE" color={props.brandColor} /> : null}
+            </div>
+            <div style={{position: 'absolute', top: '50%', left: 0, right: 0, height: '50%', overflow: 'hidden'}}>
+              <KenBurns url={props.afterUrl} isVideo={props.afterIsVideo} pop />
+              {props.showLabels ? <CornerTag text="AFTER" color={props.brandColor} /> : null}
+            </div>
+            <div style={{position: 'absolute', top: 'calc(50% - 3px)', left: 0, right: 0, height: 6, background: '#fff'}} />
+          </>
+        ) : (
+          <>
+            <KenBurns url={props.beforeUrl} isVideo={props.beforeIsVideo} />
+            <AbsoluteFill style={{clipPath: `polygon(0 0, ${wipe}% 0, ${wipe}% 100%, 0 100%)`}}>
+              <KenBurns url={props.afterUrl} isVideo={props.afterIsVideo} phase={0.03} pop />
+            </AbsoluteFill>
 
-        {props.showLabels
-          ? (frame < revealStart + WIPE / 2
-            ? <Label text="BEFORE" color={props.brandColor} />
-            : <Label text="AFTER" color={props.brandColor} />)
-          : null}
+            {props.showLabels
+              ? (frame < revealStart + WIPE / 2
+                ? <Label text="BEFORE" color={props.brandColor} />
+                : <Label text="AFTER" color={props.brandColor} />)
+              : null}
+          </>
+        )}
 
         <div style={{position: 'absolute', bottom: 240, left: 60, right: 60, textAlign: 'center', fontFamily, fontSize: 76, lineHeight: 1.04, color: '#fff', transform: `translateY(${(1 - hookIn) * 40}px)`, opacity: hookIn, textShadow: '0 4px 18px rgba(0,0,0,0.7)'}}>
           {props.hook}
@@ -280,7 +336,11 @@ export const BeforeAfter: React.FC<BeforeAfterProps> = (props) => {
           from={extrasStart + i * EXTRA_HOLD}
           durationInFrames={EXTRA_HOLD}
         >
-          <KenBurns url={url} isVideo={false} />
+          {stacked ? (
+            <WhipIn><KenBurns url={url} isVideo={false} /></WhipIn>
+          ) : (
+            <KenBurns url={url} isVideo={false} />
+          )}
           {props.handle ? (
             <div style={{position: 'absolute', bottom: 40, left: 44, fontFamily: SANS, fontWeight: 800, fontSize: 34, color: '#fff', textShadow: '0 2px 8px rgba(0,0,0,0.7)'}}>{props.handle}</div>
           ) : null}
