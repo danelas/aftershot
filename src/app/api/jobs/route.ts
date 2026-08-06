@@ -64,14 +64,18 @@ export async function POST(req: NextRequest) {
     // The photos already carry a printed BEFORE/AFTER, so the reel shouldn't
     // draw its own on top.
     labels_baked_in: !!body.labelsBakedIn,
+    // Reel format picked on the upload page; anything unrecognized falls back
+    // to the classic wipe reveal.
+    style: body.style === 'stacked' ? 'stacked' : 'wipe',
     status: 'pending',
   };
 
   let {data: job, error} = await sb.from('jobs').insert(row).select('id').single();
-  // 42703 = column doesn't exist: migration 002 hasn't been run on this
-  // database yet. Losing the flag beats refusing to make the reel.
+  // 42703 = column doesn't exist: a migration (002 / 005) hasn't been run on
+  // this database yet. Drop the columns added by migrations and retry —
+  // losing a preference beats refusing to make the reel.
   if (error?.code === '42703') {
-    const {labels_baked_in: _dropped, ...legacy} = row;
+    const {labels_baked_in: _labels, style: _style, ...legacy} = row;
     ({data: job, error} = await sb.from('jobs').insert(legacy).select('id').single());
   }
   if (error || !job) return NextResponse.json({error: error?.message || 'insert failed'}, {status: 500});

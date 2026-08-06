@@ -7,6 +7,7 @@ import {Clapperboard, CircleCheck} from 'lucide-react';
 import {anonClient} from '@/lib/supabase';
 import {use} from 'react';
 import {saveToken} from '@/lib/session';
+import StylePicker, {type ReelStyle} from '@/app/components/StylePicker';
 
 export default function UploadPage({params}: {params: Promise<{token: string}>}) {
   const {token} = use(params);
@@ -15,8 +16,23 @@ export default function UploadPage({params}: {params: Promise<{token: string}>})
   const [before, setBefore] = useState<File | null>(null);
   const [after, setAfter] = useState<File | null>(null);
   const [hook, setHook] = useState('');
+  const [style, setStyle] = useState<ReelStyle>('wipe');
   const [state, setState] = useState<'idle' | 'sending' | 'done' | 'error'>('idle');
   const [msg, setMsg] = useState('');
+
+  // Object URLs for the style previews, so the mock shows their actual shots.
+  // Revoked on replace/unmount so a long session doesn't leak them.
+  const [urls, setUrls] = useState<{before?: string; after?: string}>({});
+  useEffect(() => {
+    const u = before ? URL.createObjectURL(before) : undefined;
+    setUrls((p) => ({...p, before: u}));
+    return () => { if (u) URL.revokeObjectURL(u); };
+  }, [before]);
+  useEffect(() => {
+    const u = after ? URL.createObjectURL(after) : undefined;
+    setUrls((p) => ({...p, after: u}));
+    return () => { if (u) URL.revokeObjectURL(u); };
+  }, [after]);
 
   async function submit() {
     if (!before || !after) return;
@@ -42,6 +58,7 @@ export default function UploadPage({params}: {params: Promise<{token: string}>})
           beforeIsVideo: b.isVideo,
           afterIsVideo: a.isVideo,
           hook: hook.trim() || undefined,
+          style,
         }),
       });
       if (!res.ok) throw new Error((await res.json()).error || 'failed');
@@ -60,7 +77,7 @@ export default function UploadPage({params}: {params: Promise<{token: string}>})
         <p style={{opacity: 0.7, textAlign: 'center'}}>
           Your reel is being made and will post automatically. Send another after your next job.
         </p>
-        <button style={btn} onClick={() => {setBefore(null); setAfter(null); setHook(''); setState('idle');}}>
+        <button style={btn} onClick={() => {setBefore(null); setAfter(null); setHook(''); setStyle('wipe'); setState('idle');}}>
           Send another
         </button>
         <a href={`/studio?t=${token}`} style={studioLink}>
@@ -77,6 +94,13 @@ export default function UploadPage({params}: {params: Promise<{token: string}>})
 
       <Picker label="BEFORE" file={before} onPick={setBefore} />
       <Picker label="AFTER" file={after} onPick={setAfter} />
+
+      <StylePicker
+        value={style}
+        onChange={setStyle}
+        before={before ? {url: urls.before, isVideo: before.type.startsWith('video/')} : undefined}
+        after={after ? {url: urls.after, isVideo: after.type.startsWith('video/')} : undefined}
+      />
 
       <input
         placeholder="Caption (optional)"

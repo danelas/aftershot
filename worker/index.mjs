@@ -58,10 +58,9 @@ async function renderJob(job) {
   const c = job.customers;
   const serveUrl = await getBundle();
   const inputProps = {
-    // Reel format: honor an explicit job.style if the column exists, otherwise
-    // split 50/50 per job (deterministic by id) so the feed mixes the classic
-    // wipe reveal with the stacked split-screen format.
-    style: job.style || (parseInt(job.id.replace(/-/g, '').slice(0, 8), 16) % 2 === 0 ? 'stacked' : 'wipe'),
+    // Reel format the owner picked on the upload page. Falls back to the
+    // classic wipe reveal for jobs made before migration 005.
+    style: job.style === 'stacked' ? 'stacked' : 'wipe',
     beforeUrl: await signedUrl('intake', job.before_url),
     afterUrl: await signedUrl('intake', job.after_url),
     beforeIsVideo: job.before_is_video,

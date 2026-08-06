@@ -10,6 +10,7 @@ import {useEffect, useRef, useState} from 'react';
 import {Check, Sparkles} from 'lucide-react';
 import {anonClient} from '@/lib/supabase';
 import SideBySideSplitter from './SideBySideSplitter';
+import StylePicker, {type ReelStyle} from './StylePicker';
 import {PLATFORM_META, PLATFORM_LABEL, ALL_PLATFORMS, connectHref, tileStyle} from './PlatformBrand';
 
 const MAX_EXTRAS = 3;
@@ -65,6 +66,9 @@ export default function JobUploader({token, studioUrl}: {token: string; studioUr
   // Their photos already carry a printed BEFORE/AFTER (most collage apps add
   // one). The reel then skips its own label instead of stacking a second one.
   const [labelsBakedIn, setLabelsBakedIn] = useState(false);
+  // Reel format. 'wipe' is the house style; 'stacked' keeps both shots on
+  // screen the whole time (works best when the two are framed from one spot).
+  const [style, setStyle] = useState<ReelStyle>('wipe');
   const [state, setState] = useState<'idle' | 'sending' | 'done'>('idle');
   const [msg, setMsg] = useState('');
   // The job we just created — polled so the finished video shows up here.
@@ -133,6 +137,7 @@ export default function JobUploader({token, studioUrl}: {token: string; studioUr
           extraPaths: ex,
           hook: hook.trim() || undefined,
           labelsBakedIn,
+          style,
         }),
       });
       const d = await res.json().catch(() => ({}));
@@ -150,7 +155,7 @@ export default function JobUploader({token, studioUrl}: {token: string; studioUr
     if (after) URL.revokeObjectURL(after.url);
     extras.forEach((e) => URL.revokeObjectURL(e.url));
     setBefore(null); setAfter(null); setExtras([]); setHook('');
-    setLabelsBakedIn(false); setJobId(null); setState('idle');
+    setLabelsBakedIn(false); setStyle('wipe'); setJobId(null); setState('idle');
   }
 
   if (state === 'done') {
@@ -211,6 +216,13 @@ export default function JobUploader({token, studioUrl}: {token: string; studioUr
         onChange={(e) => setHook(e.target.value)}
       />
       <HookHelper draft={hook} token={token} onPick={setHook} />
+
+      <StylePicker
+        value={style}
+        onChange={setStyle}
+        before={before ? {url: before.url, isVideo: before.file.type.startsWith('video/')} : undefined}
+        after={after ? {url: after.url, isVideo: after.file.type.startsWith('video/')} : undefined}
+      />
 
       {/* Also reachable from the splitter, but plenty of people upload two
           shots their phone app already stamped. */}
