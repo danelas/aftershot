@@ -6,7 +6,7 @@
 // Auth = the same upload token as the /u upload page: /studio?t=<token>
 import {Suspense, useEffect, useState} from 'react';
 import {useSearchParams} from 'next/navigation';
-import {Clapperboard, TriangleAlert, Wand2} from 'lucide-react';
+import {Clapperboard, Download, Share2, TriangleAlert, Wand2, X} from 'lucide-react';
 import VideoStudio from '@/components/VideoStudio';
 import {uploadToStorage} from '@/lib/upload';
 import type {AutoDirectResult, BrandKit} from '@/lib/studio';
@@ -59,6 +59,8 @@ function StudioInner() {
   // the editor is open, and an index would then point at a different reel.
   const [openId, setOpenId] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  // A finished render waiting for the tap that opens the share sheet.
+  const [ready, setReady] = useState<File | null>(null);
 
   useEffect(() => {
     if (!token) { setState('error'); return; }
@@ -154,17 +156,43 @@ function StudioInner() {
     }
   }
 
+  function save(file: File) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(file);
+    a.download = file.name;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    setNote('Video downloaded — post it anywhere.');
+  }
+
+  // Two things used to send Share straight to a download.
+  //
+  // It sniffed the user agent for a phone, so desktop never even asked the
+  // browser — but Chrome and Edge on Windows do have a native share sheet, and
+  // that's where most people open Studio.
+  //
+  // And navigator.share() needs transient user activation. The click that
+  // starts an export is long gone by the time brandClip finishes rendering
+  // seconds later, so calling share() there throws NotAllowedError — which the
+  // old .catch(() => {}) swallowed, leaving the button doing nothing at all.
+  // So the render hands back a finished file and the user taps Share on it,
+  // which is a fresh gesture the browser will honour.
   function deliver(file: File) {
-    const mobile = /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
-    if (mobile && navigator.canShare?.({files: [file]})) {
-      navigator.share({files: [file]}).catch(() => {});
-    } else {
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(file);
-      a.download = file.name;
-      a.click();
-      URL.revokeObjectURL(a.href);
-      setNote('Video downloaded — post it anywhere.');
+    if (navigator.canShare?.({files: [file]})) setReady(file);
+    else save(file);
+  }
+
+  async function shareReady() {
+    if (!ready) return;
+    try {
+      await navigator.share({files: [ready]});
+      setReady(null);
+    } catch (e) {
+      // Dismissing the sheet is a choice, not a failure — leave the card up so
+      // they can try again. Anything else means the sheet never opened.
+      if ((e as Error)?.name === 'AbortError') return;
+      setReady(null);
+      save(ready);
     }
   }
 
@@ -261,6 +289,41 @@ function StudioInner() {
 
         {note && <p className="mt-4 text-sm font-medium text-accent-300">{note}</p>}
       </div>
+
+      {ready && (
+        <div className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-ink-900/95 px-5 py-4 backdrop-blur">
+          <div className="mx-auto flex max-w-3xl items-center gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-bold">Your reel is ready</p>
+              <p className="truncate text-xs text-mist-300">
+                Share it straight to Instagram, TikTok, or anywhere else on this device.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => { save(ready); setReady(null); }}
+              className="flex items-center gap-1.5 rounded-full border border-white/15 px-3 py-2 text-xs font-bold text-mist-200 hover:border-white/35"
+            >
+              <Download className="h-4 w-4" /> Save
+            </button>
+            <button
+              type="button"
+              onClick={shareReady}
+              className="flex items-center gap-1.5 rounded-full bg-accent-500 px-4 py-2 text-xs font-bold text-white hover:brightness-110"
+            >
+              <Share2 className="h-4 w-4" /> Share
+            </button>
+            <button
+              type="button"
+              onClick={() => setReady(null)}
+              aria-label="Dismiss"
+              className="rounded-full p-2 text-mist-400 hover:text-mist-100"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {openClip && (
         <VideoStudio
