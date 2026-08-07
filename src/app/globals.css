@@ -526,10 +526,12 @@ a { color: inherit; }
 .hook-ai-pick { color: var(--muted); }
 .hook-ai-pick:hover { color: var(--ink); border-color: var(--brand-bright); }
 /* ---------- connected socials (/account) ---------- */
+/* Two columns at every width — four across put a brand name in a column too
+   narrow to hold it, and there's no reason to squeeze: the card has the height
+   to spare. Four platforms, so this is always 2x2. */
 .soc-grid {
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px;
 }
-@media (min-width: 560px) { .soc-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 .soc-tile, .soc-chip {
   display: flex; align-items: center; gap: 7px; min-width: 0;
   padding: 11px 12px; border-radius: 12px;
