@@ -587,7 +587,7 @@ function SocialCard({token}: {token: string}) {
                   href={connectHref(p, token)}
                 >
                   <span className="soc-ic"><Icon /></span>
-                  {label}
+                  <span className="soc-tile-label">{label}</span>
                 </a>
               );
             })}

@@ -534,6 +534,9 @@ a { color: inherit; }
   display: flex; align-items: center; gap: 7px; min-width: 0;
   padding: 11px 12px; border-radius: 12px;
   font-size: 13px; font-weight: 700; line-height: 1;
+  /* Backstop: nothing paints outside the rounded fill, whatever the label
+     measures on the device's own font. */
+  overflow: hidden;
 }
 /* No border: the fill IS the edge. A translucent white border sat on top of the
    fill and showed up as a pale hairline wherever the fill went dark — the right
@@ -541,11 +544,19 @@ a { color: inherit; }
    from PlatformBrand instead. */
 .soc-tile {
   justify-content: center; color: #fff; text-decoration: none;
-  /* +1px each side stands in for the border the chips still have, so a tile and
-     a chip sitting side by side in the grid are the same size. */
-  border: 0; padding: 12px 13px;
+  /* +1px top and bottom stands in for the border the chips still have, so a
+     tile and a chip sitting side by side in the grid are the same height.
+     Sideways there's no such debt to pay and the label needs the room: at 13px
+     "Instagram" wanted every pixel of a 2-up column on a 360px phone and spilled
+     out of the pill on anything narrower. The tile centres its contents, so
+     trimming the side padding costs nothing and buys ~8px of slack. */
+  border: 0; padding: 12px 9px;
   transition: filter 0.15s, transform 0.15s;
 }
+/* A bare text node is an anonymous flex item, and those refuse to shrink below
+   min-content — which is exactly how the label got pushed past the fill. Give it
+   an element of its own so it can shrink, and ellipsise rather than escape. */
+.soc-tile-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .soc-tile:hover { filter: brightness(1.12); transform: translateY(-1px); }
 .soc-chip { border: 1px solid; color: var(--ink); }
 /* Same chip, but it's a post target you toggle rather than a status readout. */

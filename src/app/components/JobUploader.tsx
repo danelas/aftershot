@@ -438,7 +438,7 @@ function ReelResult({
                 return (
                   <a key={p} className="soc-tile" style={tileStyle(meta)} href={connectHref(p, token)}>
                     <span className="soc-ic"><Icon /></span>
-                    {label}
+                    <span className="soc-tile-label">{label}</span>
                   </a>
                 );
               }
