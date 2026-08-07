@@ -6,7 +6,8 @@
 // Auth = the same upload token as the /u upload page: /studio?t=<token>
 import {Suspense, useEffect, useState} from 'react';
 import {useSearchParams} from 'next/navigation';
-import {Clapperboard, Download, Share2, TriangleAlert, Wand2, X} from 'lucide-react';
+import {Clapperboard, Download, Send, Share2, TriangleAlert, Wand2, X} from 'lucide-react';
+import {PLATFORM_LABEL} from '@/app/components/PlatformBrand';
 import VideoStudio from '@/components/VideoStudio';
 import {uploadToStorage} from '@/lib/upload';
 import type {AutoDirectResult, BrandKit} from '@/lib/studio';
@@ -41,6 +42,12 @@ const TRADE_LABELS: Record<string, string> = {
   other: 'Local services',
 };
 
+// Web Share with a file attached. Feature-detected, never sniffed: Chrome and
+// Edge on Windows have a share sheet, and plenty of mobile browsers don't.
+function canShareFiles(file: File) {
+  return typeof navigator !== 'undefined' && !!navigator.canShare?.({files: [file]});
+}
+
 export default function Studio() {
   return (
     <Suspense>
@@ -59,8 +66,13 @@ function StudioInner() {
   // the editor is open, and an index would then point at a different reel.
   const [openId, setOpenId] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
-  // A finished render waiting for the tap that opens the share sheet.
-  const [ready, setReady] = useState<File | null>(null);
+  // A finished render waiting on what to do with it. Carries the job it came
+  // from: posting has to save the edit back over that job's reel first.
+  const [ready, setReady] = useState<{file: File; jobId: string} | null>(null);
+  const [posting, setPosting] = useState(false);
+  // Connected accounts, so the finished render can offer to post to all of them.
+  const [linked, setLinked] = useState<string[]>([]);
+  const [fbPageId, setFbPageId] = useState<string>('');
 
   useEffect(() => {
     if (!token) { setState('error'); return; }
@@ -88,6 +100,19 @@ function StudioInner() {
 
     load();
     return () => { stop = true; clearTimeout(timer); };
+  }, [token]);
+
+  // Which accounts a finished render can be posted to. Same shape the /account
+  // share row reads, including the Facebook Page a reel has to land on.
+  useEffect(() => {
+    if (!token) return;
+    fetch(`/api/social/status?t=${encodeURIComponent(token)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        setLinked((d?.accounts ?? []).map((a: {platform: string}) => a.platform));
+        setFbPageId(d?.facebookPages?.[0]?.id || '');
+      })
+      .catch(() => {});
   }, [token]);
 
   async function saveToChannel(file: File, jobId: string) {
@@ -177,22 +202,58 @@ function StudioInner() {
   // old .catch(() => {}) swallowed, leaving the button doing nothing at all.
   // So the render hands back a finished file and the user taps Share on it,
   // which is a fresh gesture the browser will honour.
-  function deliver(file: File) {
-    if (navigator.canShare?.({files: [file]})) setReady(file);
+  function deliver(file: File, jobId: string) {
+    // Worth a card if there's anything on offer beyond a download — a share
+    // sheet, or accounts to post straight to. Otherwise don't make them tap
+    // twice for a file they were always going to get.
+    if (canShareFiles(file) || linked.length) setReady({file, jobId});
     else save(file);
   }
 
   async function shareReady() {
     if (!ready) return;
     try {
-      await navigator.share({files: [ready]});
+      await navigator.share({files: [ready.file]});
       setReady(null);
     } catch (e) {
       // Dismissing the sheet is a choice, not a failure — leave the card up so
       // they can try again. Anything else means the sheet never opened.
       if ((e as Error)?.name === 'AbortError') return;
       setReady(null);
-      save(ready);
+      save(ready.file);
+    }
+  }
+
+  // Post the edit to every connected account in one go. /api/share publishes the
+  // job's STORED reel, so the edit has to replace it first — otherwise this
+  // would cheerfully post the unedited original.
+  async function postReady() {
+    if (!ready || posting || !linked.length) return;
+    setPosting(true);
+    setNote(null);
+    try {
+      await saveToChannel(ready.file, ready.jobId);
+      const r = await fetch('/api/share', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          t: token,
+          jobId: ready.jobId,
+          platforms: linked,
+          facebookPageId: linked.includes('facebook') ? fbPageId || undefined : undefined,
+        }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || 'Could not post that reel.');
+      // A platform already posted for this job comes back as skipped, not
+      // posted — saying "posted to Instagram" again would be a lie.
+      const names = (d.posted?.length ? d.posted : []).map((p: string) => PLATFORM_LABEL[p] || p);
+      setReady(null);
+      setNote(names.length ? `Posted to ${names.join(', ')}.` : 'That reel was already posted everywhere.');
+    } catch (e) {
+      setNote(e instanceof Error ? e.message : 'Could not post that reel.');
+    } finally {
+      setPosting(false);
     }
   }
 
@@ -292,32 +353,52 @@ function StudioInner() {
 
       {ready && (
         <div className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-ink-900/95 px-5 py-4 backdrop-blur">
-          <div className="mx-auto flex max-w-3xl items-center gap-3">
+          <div className="mx-auto flex max-w-3xl flex-wrap items-center gap-3">
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-bold">Your reel is ready</p>
-              <p className="truncate text-xs text-mist-300">
-                Share it straight to Instagram, TikTok, or anywhere else on this device.
+              <p className="text-xs text-mist-300">
+                {posting
+                  ? 'Posting — this takes a few seconds.'
+                  : linked.length
+                    ? `Post it to ${linked.map((p) => PLATFORM_LABEL[p] || p).join(', ')} in one go, or share it yourself.`
+                    : 'Share it straight to Instagram, TikTok, or anywhere else on this device.'}
               </p>
             </div>
             <button
               type="button"
-              onClick={() => { save(ready); setReady(null); }}
-              className="flex items-center gap-1.5 rounded-full border border-white/15 px-3 py-2 text-xs font-bold text-mist-200 hover:border-white/35"
+              disabled={posting}
+              onClick={() => { save(ready.file); setReady(null); }}
+              className="flex items-center gap-1.5 rounded-full border border-white/15 px-3 py-2 text-xs font-bold text-mist-200 hover:border-white/35 disabled:opacity-45"
             >
               <Download className="h-4 w-4" /> Save
             </button>
+            {canShareFiles(ready.file) && (
+              <button
+                type="button"
+                disabled={posting}
+                onClick={shareReady}
+                className="flex items-center gap-1.5 rounded-full border border-white/15 px-3 py-2 text-xs font-bold text-mist-200 hover:border-white/35 disabled:opacity-45"
+              >
+                <Share2 className="h-4 w-4" /> Share
+              </button>
+            )}
+            {linked.length > 0 && (
+              <button
+                type="button"
+                disabled={posting}
+                onClick={postReady}
+                className="flex items-center gap-1.5 rounded-full bg-accent-500 px-4 py-2 text-xs font-bold text-white hover:brightness-110 disabled:opacity-45"
+              >
+                <Send className="h-4 w-4" />
+                {posting ? 'Posting…' : 'Post to my accounts'}
+              </button>
+            )}
             <button
               type="button"
-              onClick={shareReady}
-              className="flex items-center gap-1.5 rounded-full bg-accent-500 px-4 py-2 text-xs font-bold text-white hover:brightness-110"
-            >
-              <Share2 className="h-4 w-4" /> Share
-            </button>
-            <button
-              type="button"
+              disabled={posting}
               onClick={() => setReady(null)}
               aria-label="Dismiss"
-              className="rounded-full p-2 text-mist-400 hover:text-mist-100"
+              className="rounded-full p-2 text-mist-400 hover:text-mist-100 disabled:opacity-45"
             >
               <X className="h-4 w-4" />
             </button>
@@ -345,7 +426,7 @@ function StudioInner() {
           onSaveToChannel={(file) => saveToChannel(file, openClip.id)}
           reviews={[]}
           onClose={() => setOpenId(null)}
-          onShare={(file) => { setOpenId(null); deliver(file); }}
+          onShare={(file) => { const id = openClip.id; setOpenId(null); deliver(file, id); }}
         />
       )}
     </main>

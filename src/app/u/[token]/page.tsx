@@ -75,7 +75,8 @@ export default function UploadPage({params}: {params: Promise<{token: string}>})
         <CircleCheck size={64} strokeWidth={1.5} color="#0EA5E9" />
         <h1 style={{fontSize: 28, margin: '12px 0'}}>Got it!</h1>
         <p style={{opacity: 0.7, textAlign: 'center'}}>
-          Your reel is being made and will post automatically. Send another after your next job.
+          Your reel is being made — it lands in your account ready to post to every
+          account you&apos;ve linked, in one tap. Send another after your next job.
         </p>
         <button style={btn} onClick={() => {setBefore(null); setAfter(null); setHook(''); setStyle('wipe'); setState('idle');}}>
           Send another

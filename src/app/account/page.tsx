@@ -599,10 +599,15 @@ function SocialCard({token}: {token: string}) {
             </p>
           )}
 
+          {/* Says what actually happens today. The worker CAN publish on its own
+              the moment a reel renders, but that's behind AUTOPOST and it's off,
+              so promising "posts automatically" here was telling people about a
+              thing that wasn't running. Every reel is one tap from posting to all
+              of these — from the share row above, or from Studio. */}
           <p className="acct-muted" style={{fontSize: 13, marginBottom: 0}}>
             {anyLinked
-              ? 'Reels post automatically to the accounts above after every job.'
-              : 'Tap a platform to link it once, and we’ll post your reels there automatically after every job. Instagram needs a Professional account (Business or Creator) — free to switch in the app under Settings → Account type.'}
+              ? 'Every reel is one tap from all of these — no copying files between apps.'
+              : 'Tap a platform to link it once, and your reels go there in a single tap — no downloading, no reposting by hand. Instagram needs a Professional account (Business or Creator) — free to switch in the app under Settings → Account type.'}
           </p>
 
           {/* A personal Facebook account with no Page can't receive a Reel. */}

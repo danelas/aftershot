@@ -478,7 +478,7 @@ function ReelResult({
           {linked.size === 0 && (
             <p className="acct-muted" style={{fontSize: 13}}>
               Tap a platform above to link it — takes a few seconds, and from then on
-              your reels post there on their own. Or share the file straight from your phone.
+              every reel goes there in one tap. Or share the file straight from your phone.
             </p>
           )}
 
