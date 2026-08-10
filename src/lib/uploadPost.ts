@@ -207,6 +207,10 @@ export async function publishReel(opts: {
   form.append('caption', opts.caption);
   if (opts.platforms.includes('instagram')) form.append('media_type', 'REELS');
   if (opts.platforms.includes('tiktok')) {
+    // MEDIA_UPLOAD drops the reel into the creator's TikTok drafts inbox, where
+    // nothing but the phone app can finish it — there is no API to publish a
+    // draft. Always ask for DIRECT_POST so a stray default can't strand a post.
+    form.append('post_mode', 'DIRECT_POST');
     form.append('privacy_level', process.env.TIKTOK_PRIVACY_LEVEL || 'PUBLIC_TO_EVERYONE');
   }
   if (opts.platforms.includes('facebook')) {
