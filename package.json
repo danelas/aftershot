@@ -9,6 +9,9 @@
     "studio": "remotion studio remotion/index.tsx",
     "render:sample": "remotion render remotion/index.tsx BeforeAfter out/sample.mp4",
     "worker": "node worker/index.mjs",
+    "social": "node src/social/run.mjs",
+    "social:list": "node src/social/run.mjs --list",
+    "social:dry": "node src/social/run.mjs --dry-run --scale 0.75",
     "setup:storage": "node scripts/setup-storage.mjs",
     "seed": "node scripts/seed-test.mjs",
     "refresh:ratings": "node scripts/refresh-ratings.mjs"

@@ -73,6 +73,11 @@ export async function postReel({mediaPath, title, caption, platforms, profile, f
   form.append('caption', caption);
   if (platforms.includes('instagram')) form.append('media_type', 'REELS');
   if (platforms.includes('tiktok')) {
+    // Same reason as src/lib/uploadPost.ts: MEDIA_UPLOAD strands the reel in the
+    // TikTok drafts inbox and no API can publish a draft. This copy of the
+    // poster never got the fix, so worker-rendered reels were still landing
+    // there.
+    form.append('post_mode', 'DIRECT_POST');
     form.append('privacy_level', process.env.TIKTOK_PRIVACY_LEVEL || 'PUBLIC_TO_EVERYONE');
   }
   if (platforms.includes('facebook')) {

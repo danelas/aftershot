@@ -1,0 +1,104 @@
+name: social-ad
+
+# AfterShot's own marketing: renders one ad variant a day from
+# src/social/variants/ and (once opted in) posts it to our accounts.
+# Nothing to do with customer reels — those are render-worker.yml.
+#
+# SAFE BY DEFAULT: renders and uploads an artifact for review. It only publishes
+# when repo Variable SOCIAL_POST=1, so turning the schedule on doesn't
+# immediately start posting.
+on:
+  schedule:
+    # 14:20 UTC daily (~10:20am ET) — clear of render-worker's */5 tick.
+    - cron: "20 14 * * *"
+  workflow_dispatch:
+    inputs:
+      variant:
+        description: "Variant id to force (blank = today's in the rotation)"
+        required: false
+        default: ""
+        type: string
+      post:
+        description: "Publish it? (off = render an artifact only)"
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: social-ad
+  cancel-in-progress: false
+
+jobs:
+  ad:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # An explicit post=false on a manual dispatch forces render-only even when
+      # SOCIAL_POST=1, so the pipeline can be dry-run without posting. On the
+      # schedule the input is empty and the repo Variable decides.
+      SOCIAL_POST: ${{ github.event.inputs.post == 'false' && '0' || ((github.event.inputs.post == 'true' || vars.SOCIAL_POST == '1') && '1' || '0') }}
+      SOCIAL_PLATFORMS: ${{ vars.SOCIAL_PLATFORMS }}
+      AFTERSHOT_SOCIAL_PROFILE: ${{ secrets.AFTERSHOT_SOCIAL_PROFILE }}
+      AFTERSHOT_FACEBOOK_PAGE_ID: ${{ secrets.AFTERSHOT_FACEBOOK_PAGE_ID }}
+      UPLOAD_POST_API_KEY: ${{ secrets.UPLOAD_POST_API_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # Headless-Chrome + font libs Remotion needs on Linux runners.
+      - name: System deps for Remotion
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libnss3 libdbus-1-3 libatk1.0-0 libgbm-dev libasound2t64 \
+            libxrandr2 libxkbcommon0 libxfixes3 libxcomposite1 libxdamage1 \
+            libatk-bridge2.0-0 libpango-1.0-0 libcairo2 libcups2 \
+            fonts-liberation fonts-dejavu-core || true
+
+      - name: Install
+        run: npm ci
+
+      - name: Guard — publishing needs a profile
+        if: ${{ env.SOCIAL_POST == '1' }}
+        run: |
+          if [ -z "$AFTERSHOT_SOCIAL_PROFILE" ]; then
+            echo "::error::SOCIAL_POST is on but the AFTERSHOT_SOCIAL_PROFILE secret is missing."
+            exit 1
+          fi
+
+      - name: Render (and post, if enabled)
+        id: run
+        run: |
+          args=""
+          if [ -n "${{ github.event.inputs.variant }}" ]; then
+            args="--variant ${{ github.event.inputs.variant }}"
+          fi
+          node src/social/run.mjs $args
+          echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
+      - name: Upload the ad for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: social-ad-${{ steps.run.outputs.date }}
+          path: out/social/*
+          if-no-files-found: error
+          retention-days: 14
+
+  # Same alerting as the other agents: a silent multi-day outage is the failure
+  # mode that actually costs us, not a single bad run.
+  notify-failure:
+    needs: [ad]
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post failure to Manager inbox
+        run: |
+          curl -s -X POST "https://manager-dabz.onrender.com/api/ingest" \
+            -H "Content-Type: application/json" \
+            -H "x-ingest-token: ${{ secrets.INGEST_TOKEN }}" \
+            -d "{\"source\":\"ci:social-ad\",\"text\":\"aftershot social-ad workflow FAILED. Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" || true

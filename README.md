@@ -36,6 +36,11 @@ Two deploy targets, one repo:
   poster → marks done. Retries with backoff (learned from PeekScout's
   upload-post poll-timeout / rolling-alias failures).
 
+- **social agent** (`src/social/`, GitHub Actions) — our own marketing, not a
+  customer's reel: renders one ad variant a day from the app screen-recording
+  cuts and posts it to AfterShot's accounts. Render-only until `SOCIAL_POST=1`.
+  See `src/social/README.md`.
+
 State + storage + auth: Supabase. Billing: Stripe (attribution via
 `client_reference_id`, per house style). Email: Resend.
 

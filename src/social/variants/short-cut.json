@@ -1,0 +1,43 @@
+{
+  "id": "short-cut",
+  "note": "The ~15s cut, for feeds that punish length. Overrides `scenes` outright — the four beats that carry the pitch (input, one button, where it goes, the end card). `seconds` must not exceed the length of the cut in public/ad-cuts/ or the clip freezes on its last frame.",
+  "props": {
+    "hookKicker": "TWO PHOTOS",
+    "hookLine1": "Before. After.",
+    "hookLine2": "That’s the work.",
+    "hookPunch": "The reel posts itself.",
+    "hookSeconds": 3.6,
+    "scenes": [
+      {
+        "clipFile": "ad-cuts/seg0.mp4",
+        "seconds": 2.6,
+        "line1": "Two photos.",
+        "line2": "From the driveway, on your phone."
+      },
+      {
+        "clipFile": "ad-cuts/seg2.mp4",
+        "seconds": 2.2,
+        "line1": "One button.",
+        "line2": "That’s the whole job."
+      },
+      {
+        "clipFile": "ad-cuts/seg3.mp4",
+        "seconds": 2.6,
+        "line1": "Posted everywhere",
+        "platforms": true
+      },
+      {
+        "clipFile": "ad-cuts/seg7.mp4",
+        "seconds": 2.4,
+        "line1": "Ending on your name",
+        "line2": "and your phone number"
+      }
+    ],
+    "endLine1": "You take the photos.",
+    "endLine2": "We do the rest.",
+    "endSub": "theaftershot.com — 7 days free",
+    "endSeconds": 3.0
+  },
+  "title": "Before. After. The reel posts itself.",
+  "caption": "Two photos in, a captioned reel out, posted to Instagram, TikTok and YouTube. That’s AfterShot.\n\n7 days free, no card — theaftershot.com\n\n#beforeandafter #pressurewashing #satisfying #smallbusiness #powerwashing"
+}
