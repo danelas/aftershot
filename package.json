@@ -10,6 +10,7 @@
     "render:sample": "remotion render remotion/index.tsx BeforeAfter out/sample.mp4",
     "worker": "node worker/index.mjs",
     "social": "node src/social/run.mjs",
+    "prospect": "node src/prospect/run.mjs",
     "social:list": "node src/social/run.mjs --list",
     "social:dry": "node src/social/run.mjs --dry-run --scale 0.75",
     "setup:storage": "node scripts/setup-storage.mjs",
