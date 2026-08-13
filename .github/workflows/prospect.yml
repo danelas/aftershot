@@ -24,7 +24,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # 22+: supabase-js needs a native WebSocket (Node 20 throws at createClient).
+          node-version: 22
       # The prospector only needs dotenv + supabase-js — a full npm ci pulls
       # Remotion and friends for nothing.
       - run: npm install --no-save dotenv @supabase/supabase-js
