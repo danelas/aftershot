@@ -8,10 +8,12 @@ phone.
 
 ## Flow
 
-1. **Discover** — Apify `instagram-hashtag-scraper` over the configured
-   hashtags (default: pressurewashing, roofcleaning, softwash,
-   drivewaycleaning). A post qualifies if it's a carousel with ≥2 still images
-   and both "before" and "after" in the caption.
+1. **Discover** — Apify `instagram-hashtag-scraper` over hashtags covering
+   every trade on /start (pressure washing, roof cleaning, detailing,
+   landscaping, painting, epoxy, remodeling, junk removal, cleaning, pool,
+   carpet/tile, windows — see `TRADE_HASHTAGS`). A post qualifies if it's a
+   carousel with ≥2 still images and both "before" and "after" in the caption;
+   caption keywords decide which trade it gets onboarded as.
 2. **Brand** — Apify `instagram-profile-scraper` for each new account:
    profile pic → logo, business phone field or a phone regex over the bio.
 3. **Render** — the normal customer pipeline, driven from outside: `/api/onboard`
@@ -21,8 +23,15 @@ phone.
    profile link, and the DM text. Watch the reel (this is also where you catch
    a flipped before/after), then send it from the IG app.
 
-Already-contacted handles are remembered in `reels/prospect/state.json` in
-Supabase storage — re-runs skip them.
+"Already contacted" is derived from the customers table: a handle whose
+`prospect-<handle>@theaftershot.com` row exists is skipped on every future run.
+
+## Cron
+
+`.github/workflows/prospect.yml` runs it daily at 9am ET (5 prospects), and can
+be fired manually from the Actions tab with a custom limit or hashtag list.
+Secrets: the two Supabase vars plus `APIFY_TOKEN`, `TELEGRAM_BOT_TOKEN`,
+`TELEGRAM_CHAT_ID`.
 
 ## Run
 

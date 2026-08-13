@@ -1,0 +1,40 @@
+name: prospect
+
+# Daily prospecting: find IG before/after posts across every trade on /start,
+# render a branded reel for each poster, and queue reel + DM text to Telegram.
+# The DM itself is sent manually from the IG app — see src/prospect/README.md.
+
+on:
+  schedule:
+    - cron: "0 13 * * *" # 9am ET
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "Max prospects this run"
+        default: "5"
+      hashtags:
+        description: "Comma-separated hashtag override (blank = all trades)"
+        default: ""
+
+jobs:
+  prospect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      # The prospector only needs dotenv + supabase-js — a full npm ci pulls
+      # Remotion and friends for nothing.
+      - run: npm install --no-save dotenv @supabase/supabase-js
+      - run: >
+          node src/prospect/run.mjs
+          --limit ${{ github.event.inputs.limit || '5' }}
+          ${{ github.event.inputs.hashtags && format('--hashtags {0}', github.event.inputs.hashtags) || '' }}
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}

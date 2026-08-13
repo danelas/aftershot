@@ -12,9 +12,11 @@
 // third-party senders get accounts banned; the whole design is "machine makes
 // the asset, a thumb sends it".
 //
-// State (who we already made a reel for) lives as JSON in the 'reels' storage
-// bucket — no schema migration needed, and every machine that runs this shares
-// one memory.
+// "Already contacted" is derived from the customers table itself: every
+// prospect is onboarded as prospect-<handle>@theaftershot.com, so a handle
+// whose customer row exists has been done. No state file, no migration, and
+// every machine that runs this shares one memory. (A run that failed before
+// onboarding retries next time — which is what you want.)
 //
 // Usage:
 //   node src/prospect/run.mjs                 # full run (default 5 prospects)
@@ -29,11 +31,53 @@ import 'dotenv/config';
 import {createClient} from '@supabase/supabase-js';
 
 const BASE = process.env.PUBLIC_BASE_URL || 'https://theaftershot.com';
-const STATE_KEY = 'prospect/state.json';
+const PROSPECT_EMAIL = (handle) => `prospect-${handle}@theaftershot.com`;
 const HASHTAG_ACTOR = 'apify~instagram-hashtag-scraper';
 const PROFILE_ACTOR = 'apify~instagram-profile-scraper';
 
-const DEFAULT_HASHTAGS = ['pressurewashing', 'roofcleaning', 'softwash', 'drivewaycleaning'];
+// One entry per trade on /start — the hashtags are how each trade's work shows
+// up on Instagram, and the trade value is what /api/onboard records so the reel
+// copy fits. Caption keywords (below) decide which trade a found post belongs to.
+const TRADE_HASHTAGS = {
+  pressure_washing: ['pressurewashing', 'softwash', 'drivewaycleaning'],
+  roof_cleaning: ['roofcleaning', 'roofwashing', 'guttercleaning'],
+  detailing: ['autodetailing', 'cardetailing'],
+  landscaping: ['landscaping', 'lawncare'],
+  painting: ['housepainting', 'exteriorpainting'],
+  epoxy_floors: ['epoxyflooring', 'epoxyfloors'],
+  remodeling: ['bathroomremodel', 'kitchenremodel'],
+  junk_removal: ['junkremoval'],
+  cleaning: ['housecleaning', 'deepcleaning'],
+  pool_care: ['poolcleaning'],
+  carpet_tile: ['carpetcleaning', 'groutcleaning'],
+  window_cleaning: ['windowcleaning'],
+};
+const DEFAULT_HASHTAGS = Object.values(TRADE_HASHTAGS).flat();
+
+// The hashtag actor doesn't say which hashtag surfaced a post, so the caption
+// decides the trade; first match wins, pressure washing is the fallback.
+const TRADE_KEYWORDS = [
+  ['roof_cleaning', /roof|gutter/],
+  ['detailing', /detail|ceramic coat/],
+  ['landscaping', /landscap|lawn|sod|mulch/],
+  ['painting', /paint/],
+  ['epoxy_floors', /epoxy|garage floor/],
+  ['remodeling', /remodel|renovat|kitchen|bathroom/],
+  ['junk_removal', /junk|haul/],
+  ['pool_care', /pool/],
+  ['carpet_tile', /carpet|grout|tile clean/],
+  ['window_cleaning', /window/],
+  ['cleaning', /house clean|deep clean|maid|office clean/],
+  ['pressure_washing', /pressure|power wash|soft ?wash|driveway|paver/],
+];
+
+function tradeOf(post) {
+  const cap = (post.caption || '').toLowerCase();
+  for (const [trade, re] of TRADE_KEYWORDS) {
+    if (re.test(cap)) return trade;
+  }
+  return 'pressure_washing';
+}
 
 // AfterShot-positioned, per Dan: the tool made the reel, not "I".
 const dmText = (handle) =>
@@ -89,7 +133,7 @@ async function discover() {
   console.log(`[discover] hashtags: ${HASHTAGS.join(', ')}`);
   const items = await runActor(HASHTAG_ACTOR, {
     hashtags: HASHTAGS,
-    resultsLimit: 30, // per hashtag; recent posts
+    resultsLimit: 15, // per hashtag; the full trade list is ~24 tags, keep the sweep bounded
   });
   const posts = items.filter(isBeforeAfter);
   // One prospect per account per run — the first qualifying post wins.
@@ -129,14 +173,14 @@ async function fetchBytes(url) {
   return Buffer.from(await res.arrayBuffer());
 }
 
-async function createCustomer(handle, profile) {
+async function createCustomer(handle, profile, trade) {
   const form = new FormData();
   form.set('businessName', profile?.fullName || handle);
-  // Unique per handle so re-runs hit the "existing" path instead of dup rows.
-  form.set('email', `prospect-${handle}@theaftershot.com`);
+  // Unique per handle — this row's existence is also the "already contacted" record.
+  form.set('email', PROSPECT_EMAIL(handle));
   const phone = findPhone(profile);
   if (phone) form.set('phone', phone);
-  form.set('trade', 'pressure_washing');
+  form.set('trade', trade);
   form.set('ctaText', 'Free Quote');
   const pic = profile?.profilePicUrlHD || profile?.profilePicUrl;
   if (pic) {
@@ -191,23 +235,16 @@ async function waitForReels(store, jobIds, timeoutMs = 15 * 60 * 1000) {
   return done;
 }
 
-// ── State + Telegram ─────────────────────────────────────────────────────────
+// ── Contacted-set + Telegram ─────────────────────────────────────────────────
 
-async function loadState(store) {
-  const {data} = await store.storage.from('reels').download(STATE_KEY);
-  if (!data) return {handles: {}};
-  try {
-    return JSON.parse(await data.text());
-  } catch {
-    return {handles: {}};
-  }
-}
-
-async function saveState(store, state) {
-  await store.storage.from('reels').upload(
-    STATE_KEY,
-    Buffer.from(JSON.stringify(state, null, 2)),
-    {contentType: 'application/json', upsert: true},
+async function contactedHandles(store) {
+  const {data, error} = await store
+    .from('customers')
+    .select('email')
+    .like('email', 'prospect-%@theaftershot.com');
+  if (error) throw new Error(`customers query: ${error.message}`);
+  return new Set(
+    (data || []).map((r) => r.email.replace(/^prospect-/, '').replace(/@theaftershot\.com$/, '')),
   );
 }
 
@@ -249,11 +286,11 @@ async function queueToTelegram(p) {
 
 async function main() {
   const store = sb();
-  const state = await loadState(store);
+  const seen = await contactedHandles(store);
 
   const byOwner = await discover();
-  const fresh = [...byOwner.entries()].filter(([handle]) => !state.handles[handle]).slice(0, LIMIT);
-  console.log(`[filter] ${fresh.length} new prospects (cap ${LIMIT}, ${Object.keys(state.handles).length} already seen)`);
+  const fresh = [...byOwner.entries()].filter(([handle]) => !seen.has(handle)).slice(0, LIMIT);
+  console.log(`[filter] ${fresh.length} new prospects (cap ${LIMIT}, ${seen.size} already contacted)`);
   if (DRY) {
     for (const [handle, post] of fresh) {
       console.log(`  @${handle} — ${(post.caption || '').slice(0, 80).replace(/\n/g, ' ')}`);
@@ -268,13 +305,12 @@ async function main() {
   for (const [handle, post] of fresh) {
     try {
       const profile = profiles.get(handle);
-      const {token, phone} = await createCustomer(handle, profile);
+      const {token, phone} = await createCustomer(handle, profile, tradeOf(post));
       const jobId = await createJob(store, token, post);
       prospects.push({handle, name: profile?.fullName || handle, phone, token, jobId, post: post.url});
       console.log(`[render] @${handle} → job ${jobId}`);
     } catch (e) {
       console.error(`[render] @${handle} failed: ${e.message}`);
-      state.handles[handle] = {status: 'failed', at: new Date().toISOString()};
     }
   }
 
@@ -283,22 +319,13 @@ async function main() {
     const reelUrl = reels.get(p.jobId);
     if (!reelUrl) {
       console.error(`[reel] @${p.handle} did not render in time`);
-      state.handles[p.handle] = {status: 'render-timeout', jobId: p.jobId, at: new Date().toISOString()};
       continue;
     }
     p.reelUrl = reelUrl;
     await queueToTelegram(p);
-    state.handles[p.handle] = {
-      status: 'queued',
-      jobId: p.jobId,
-      reelUrl,
-      phone: p.phone,
-      at: new Date().toISOString(),
-    };
     console.log(`[queue] @${p.handle} → ${reelUrl}`);
   }
 
-  await saveState(store, state);
   console.log(`[done] ${prospects.filter((p) => p.reelUrl).length}/${fresh.length} queued`);
 }
 
