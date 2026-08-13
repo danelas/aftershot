@@ -29,10 +29,12 @@ export async function findCustomerByEmail(email: string) {
   if (!e) return null;
   const {data} = await serviceClient()
     .from('customers')
-    .select('id, business_name, email, upload_token')
+    .select('id, business_name, email, upload_token, status')
     .in('email', Array.from(new Set([e, e.toLowerCase()])))
-    .order('created_at', {ascending: true})
-    .limit(1)
-    .maybeSingle();
-  return data as {id: string; business_name: string; email: string; upload_token: string} | null;
+    .order('created_at', {ascending: true});
+  if (!data?.length) return null;
+  // An email can own several rows (e.g. a canceled trial plus a live account);
+  // signing in must land on one that can actually upload.
+  const row = data.find(c => c.status === 'active') ?? data[0];
+  return row as {id: string; business_name: string; email: string; upload_token: string} | null;
 }
