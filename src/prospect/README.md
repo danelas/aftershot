@@ -8,12 +8,15 @@ phone.
 
 ## Flow
 
-1. **Discover** — Apify `instagram-hashtag-scraper` over hashtags covering
-   every trade on /start (pressure washing, roof cleaning, detailing,
-   landscaping, painting, epoxy, remodeling, junk removal, cleaning, pool,
-   carpet/tile, windows — see `TRADE_HASHTAGS`). A post qualifies if it's a
-   carousel with ≥2 still images and both "before" and "after" in the caption;
-   caption keywords decide which trade it gets onboarded as.
+1. **Discover** — Apify `instagram-hashtag-scraper` over a **rotating window
+   of 6 hashtags per day** drawn from the full trade list (pressure washing,
+   roof cleaning, detailing, landscaping, painting, epoxy, remodeling, junk
+   removal, cleaning, pool, carpet/tile, windows — see `TRADE_HASHTAGS`).
+   Every trade comes around roughly every 4 days, keeping Apify usage near
+   the free tier. `--hashtags` overrides the rotation for a manual sweep.
+   A post qualifies if it's a carousel with ≥2 still images and both
+   "before" and "after" in the caption; caption keywords decide which trade
+   it gets onboarded as.
 2. **Brand** — Apify `instagram-profile-scraper` for each new account:
    profile pic → logo, business phone field or a phone regex over the bio.
 3. **Render** — the normal customer pipeline, driven from outside: `/api/onboard`
@@ -52,7 +55,9 @@ In `.env` / `.env.local` (Supabase vars are already there):
 
 ## Costs & cadence
 
-Each run is two Apify actor runs (hashtag sweep + profile batch) — roughly a
-dollar or two per day at default volume. Keep the per-run cap modest: 5–10
-reels a day is ~2 minutes of manual DM sending, which is also the volume that
-looks human on the sending account.
+Each run is two Apify actor runs (hashtag sweep + profile batch) plus one
+Claude vision call per rendered prospect. With the 6-hashtag rotation the
+sweep is ~90 posts/day — roughly $6–8/month of Apify, slightly over the $5
+free tier (which PeekScout also draws from). Keep the per-run cap modest:
+5–10 reels a day is ~2 minutes of manual DM sending, which is also the
+volume that looks human on the sending account.

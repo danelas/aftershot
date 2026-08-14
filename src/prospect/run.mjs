@@ -53,7 +53,22 @@ const TRADE_HASHTAGS = {
   carpet_tile: ['carpetcleaning', 'groutcleaning'],
   window_cleaning: ['windowcleaning'],
 };
-const DEFAULT_HASHTAGS = Object.values(TRADE_HASHTAGS).flat();
+const ALL_HASHTAGS = Object.values(TRADE_HASHTAGS).flat();
+
+// Sweeping all ~23 hashtags daily blew through the Apify free tier in a day.
+// Instead each run sweeps a rotating window of 6, so every trade gets covered
+// roughly every 4 days at about a quarter of the cost. Deterministic by date,
+// so a re-run on the same day repeats the same window instead of double-spending.
+const ROTATION_SIZE = 6;
+function rotatedHashtags() {
+  const day = Math.floor(Date.now() / 86_400_000);
+  const start = (day * ROTATION_SIZE) % ALL_HASHTAGS.length;
+  const window = [];
+  for (let i = 0; i < ROTATION_SIZE; i++) {
+    window.push(ALL_HASHTAGS[(start + i) % ALL_HASHTAGS.length]);
+  }
+  return window;
+}
 
 // The hashtag actor doesn't say which hashtag surfaced a post, so the caption
 // decides the trade; first match wins, pressure washing is the fallback.
@@ -95,7 +110,9 @@ const opt = (name, dflt) => {
 
 const DRY = flag('dry-run');
 const LIMIT = Number(opt('limit', '5'));
-const HASHTAGS = opt('hashtags', DEFAULT_HASHTAGS.join(',')).split(',').map((h) => h.trim()).filter(Boolean);
+// --hashtags overrides the rotation entirely (e.g. a manual all-trades sweep).
+const HASHTAGS = opt('hashtags', '').split(',').map((h) => h.trim()).filter(Boolean);
+if (!HASHTAGS.length) HASHTAGS.push(...rotatedHashtags());
 
 function sb() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
