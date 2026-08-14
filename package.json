@@ -18,6 +18,7 @@
     "refresh:ratings": "node scripts/refresh-ratings.mjs"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.117.1",
     "@remotion/bundler": "4.0.395",
     "@remotion/cli": "4.0.395",
     "@remotion/google-fonts": "4.0.395",

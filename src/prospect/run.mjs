@@ -29,6 +29,7 @@
 
 import 'dotenv/config';
 import {createClient} from '@supabase/supabase-js';
+import Anthropic from '@anthropic-ai/sdk';
 
 const BASE = process.env.PUBLIC_BASE_URL || 'https://theaftershot.com';
 const PROSPECT_EMAIL = (handle) => `prospect-${handle}@theaftershot.com`;
@@ -173,6 +174,73 @@ async function fetchBytes(url) {
   return Buffer.from(await res.arrayBuffer());
 }
 
+// Carousel order is only a guess at which shot is the before, and many trades
+// post photos with BEFORE/AFTER already printed on them (the reel must not
+// draw its own labels on top of those). One vision call answers both;
+// on any failure we fall back to carousel order with labels off.
+async function analyzePair(bytesA, bytesB) {
+  const fallback = {before_index: 0, labels_baked_in: false};
+  if (!process.env.ANTHROPIC_API_KEY) return fallback;
+  try {
+    const anthropic = new Anthropic();
+    const img = (b) => ({
+      type: 'image',
+      source: {type: 'base64', media_type: 'image/jpeg', data: b.toString('base64')},
+    });
+    const response = await anthropic.messages.create({
+      model: 'claude-opus-5',
+      max_tokens: 1024,
+      output_config: {
+        format: {
+          type: 'json_schema',
+          schema: {
+            type: 'object',
+            properties: {
+              before_index: {
+                type: 'integer',
+                enum: [0, 1],
+                description: 'Index of the BEFORE photo (worse/dirtier condition)',
+              },
+              labels_baked_in: {
+                type: 'boolean',
+                description: 'true if either photo already has BEFORE/AFTER text printed on it',
+              },
+            },
+            required: ['before_index', 'labels_baked_in'],
+            additionalProperties: false,
+          },
+        },
+      },
+      messages: [{
+        role: 'user',
+        content: [
+          img(bytesA),
+          img(bytesB),
+          {
+            type: 'text',
+            text:
+              'These are two photos from a home-services company\'s before/after post ' +
+              '(cleaning, washing, painting, or similar). Image 0 is first, image 1 is second. ' +
+              'Which image shows the BEFORE state (dirtier, more worn, pre-work)? ' +
+              'And does either photo already have "BEFORE" or "AFTER" text printed on the image itself?',
+          },
+        ],
+      }],
+    });
+    if (response.stop_reason === 'refusal') return fallback;
+    const text = response.content.find((b) => b.type === 'text')?.text;
+    if (!text) return fallback;
+    const d = JSON.parse(text);
+    return {
+      before_index: d.before_index === 1 ? 1 : 0,
+      labels_baked_in: !!d.labels_baked_in,
+    };
+  } catch (e) {
+    console.error(`[vision] analysis failed, using carousel order: ${e.message}`);
+    return fallback;
+  }
+}
+
 async function createCustomer(handle, profile, trade) {
   const form = new FormData();
   form.set('businessName', profile?.fullName || handle);
@@ -199,21 +267,31 @@ async function createCustomer(handle, profile, trade) {
 async function createJob(store, token, post) {
   const images = post.childPosts.filter((c) => c.type === 'Image' && c.displayUrl);
   const stamp = Date.now();
-  const put = async (url, tag) => {
+  const bytesA = await fetchBytes(images[0].displayUrl);
+  const bytesB = await fetchBytes(images[1].displayUrl);
+  const analysis = await analyzePair(bytesA, bytesB);
+  const [beforeBytes, afterBytes] =
+    analysis.before_index === 1 ? [bytesB, bytesA] : [bytesA, bytesB];
+
+  const put = async (bytes, tag) => {
     const path = `${token}/${stamp}-${tag}.jpg`;
     const {error} = await store.storage.from('intake')
-      .upload(path, await fetchBytes(url), {contentType: 'image/jpeg'});
+      .upload(path, bytes, {contentType: 'image/jpeg'});
     if (error) throw new Error(`intake upload: ${error.message}`);
     return path;
   };
-  // Carousel order is the best available guess at before-vs-after; the human
-  // review on Telegram is what catches a flipped pair before it gets sent.
-  const before = await put(images[0].displayUrl, 'before');
-  const after = await put(images[1].displayUrl, 'after');
+  const before = await put(beforeBytes, 'before');
+  const after = await put(afterBytes, 'after');
   const res = await fetch(`${BASE}/api/jobs`, {
     method: 'POST',
     headers: {'content-type': 'application/json'},
-    body: JSON.stringify({uploadToken: token, beforePath: before, afterPath: after, style: 'wipe'}),
+    body: JSON.stringify({
+      uploadToken: token,
+      beforePath: before,
+      afterPath: after,
+      labelsBakedIn: analysis.labels_baked_in,
+      style: 'wipe',
+    }),
   });
   const d = await res.json().catch(() => null);
   if (!res.ok || !d?.jobId) throw new Error(`job create failed: ${JSON.stringify(d)}`);
