@@ -191,6 +191,16 @@ async function fetchBytes(url) {
   return Buffer.from(await res.arrayBuffer());
 }
 
+// Instagram serves displayUrl images as WebP as often as JPEG, and the API
+// rejects a mismatched media_type — so sniff the real format from the bytes.
+function sniffMediaType(b) {
+  if (b.length >= 12 && b.toString('ascii', 0, 4) === 'RIFF' && b.toString('ascii', 8, 12) === 'WEBP') {
+    return 'image/webp';
+  }
+  if (b[0] === 0x89 && b.toString('ascii', 1, 4) === 'PNG') return 'image/png';
+  return 'image/jpeg';
+}
+
 // Carousel order is only a guess at which shot is the before, and many trades
 // post photos with BEFORE/AFTER already printed on them (the reel must not
 // draw its own labels on top of those). One vision call answers both;
@@ -202,7 +212,7 @@ async function analyzePair(bytesA, bytesB) {
     const anthropic = new Anthropic();
     const img = (b) => ({
       type: 'image',
-      source: {type: 'base64', media_type: 'image/jpeg', data: b.toString('base64')},
+      source: {type: 'base64', media_type: sniffMediaType(b), data: b.toString('base64')},
     });
     const response = await anthropic.messages.create({
       model: 'claude-opus-5',
