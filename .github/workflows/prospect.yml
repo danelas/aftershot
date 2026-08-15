@@ -28,7 +28,9 @@ jobs:
           node-version: 22
       # The prospector only needs dotenv + supabase-js — a full npm ci pulls
       # Remotion and friends for nothing.
-      - run: npm install --no-save dotenv @supabase/supabase-js @anthropic-ai/sdk
+      # --legacy-peer-deps: latest @anthropic-ai/sdk peers a newer zod than
+      # Remotion pins (3.22.3); without it npm ERESOLVEs and the job dies.
+      - run: npm install --no-save --legacy-peer-deps dotenv @supabase/supabase-js @anthropic-ai/sdk
       - run: >
           node src/prospect/run.mjs
           --limit ${{ github.event.inputs.limit || '5' }}
