@@ -59,7 +59,7 @@ export async function connectedPlatforms(profile) {
 
 // profile: the customer's upload-post profile name. platforms: e.g.
 // ['instagram','tiktok','youtube','facebook']. Returns the upload-post body.
-export async function postReel({mediaPath, title, caption, platforms, profile, facebookPageId}) {
+export async function postReel({mediaPath, title, caption, platforms, profile, facebookPageId, thumbOffsetMs}) {
   if (!platforms?.length) throw new Error('No platforms to post to.');
   if (!profile) throw new Error('No upload-post profile for this customer.');
 
@@ -71,7 +71,12 @@ export async function postReel({mediaPath, title, caption, platforms, profile, f
   form.append('title', title.slice(0, 90));
   form.append('description', caption);
   form.append('caption', caption);
-  if (platforms.includes('instagram')) form.append('media_type', 'REELS');
+  if (platforms.includes('instagram')) {
+    form.append('media_type', 'REELS');
+    // Frame 0 of our renders is black (scene fade-in), which Instagram would
+    // use as the cover. thumb_offset picks the cover frame instead.
+    if (thumbOffsetMs != null) form.append('thumb_offset', String(Math.round(thumbOffsetMs)));
+  }
   if (platforms.includes('tiktok')) {
     // Same reason as src/lib/uploadPost.ts: MEDIA_UPLOAD strands the reel in the
     // TikTok drafts inbox and no API can publish a draft. This copy of the

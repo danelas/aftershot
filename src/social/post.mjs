@@ -53,6 +53,10 @@ export async function postAd(mediaPath, variant) {
     platforms,
     profile,
     facebookPageId: (process.env.AFTERSHOT_FACEBOOK_PAGE_ID ?? '').trim() || null,
+    // 2.5s in: hook + punchline fully revealed (punch spring lands ~1.85s and
+    // every hook runs ≥3.6s). Without this IG covers the reel with frame 0,
+    // which is black.
+    thumbOffsetMs: Number(process.env.SOCIAL_THUMB_OFFSET_MS || 2500),
   });
   // upload-post accepts asynchronously; "submitted, unconfirmed" after the poll
   // window is not a failure (learned the hard way on PeekScout).
